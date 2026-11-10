@@ -1,87 +1,69 @@
-# Kickstart Prompt
+# CheckPoint co-developer kickoff prompt
 
-Copy the prompt below into a coding assistant or use it as the initial implementation brief for the development team.
+Use this prompt in the next development session after asking the co-developer to start. It implements the decisions already agreed with the owner; the current documentation PR does not authorize scaffolding during planning. Supply deadline/team experience when known. The prompt is intentionally staged so the first PR remains reviewable.
 
 ```text
-You are helping develop a Laravel web application called the Regional Safety Compliance Management System.
+Act as our co-developer for CheckPoint, a Regional Safety Compliance Management System for healthcare logistics. Help our student team build an understandable, complete Laravel system and explain decisions we need to maintain and defend.
 
-Project context:
-- This is a third-year computer science project for a healthcare logistics company with multiple regions and facilities.
-- The application centralizes employee credential documents, qualification requirements, compliance status, audits, and limited third-party verification.
-- Keep the implementation understandable and defendable. Do not overengineer it with microservices, event-driven infrastructure, a separate SPA, or paid external integrations unless a later requirement clearly justifies one.
+Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, and main/docs/Implementation.md. Preserve unrelated changes and existing documentation. These files describe the agreed scope; the original Word proposal is the business source. The application does not exist yet. Do not mistake Laravel Installer's version for a framework version.
 
-Required architecture:
-- Use a Laravel monolith with Blade views.
-- Use Tailwind CSS and Alpine.js only for simple UI interaction where useful.
-- Use routes/web.php for browser workflows and routes/api.php for JSON endpoints.
-- Use Eloquent models, migrations, factories, seeders, Form Requests, Policies/Gates, controllers, Blade components, and PHPUnit or Pest tests.
-- Use Laravel Sanctum for token-protected API access.
-- Store uploaded files on a private Laravel filesystem disk and stream them only through authorized controller actions.
+Agreed stack and services:
+- One Laravel application at the repository root; Blade, Tailwind, and Alpine.js for small interactions. No separate SPA, microservices, or generic repository abstraction.
+- MySQL, matching the proposal. Do not substitute PostgreSQL even though it is installed.
+- Herd for the local classroom demo. Check the existing MySQL80 Windows service, reported stopped during planning; verify server/version/access before installing another server or changing configuration.
+- Select a supported Laravel release compatible with the actual PHP runtime and choose a compatible Blade authentication setup. Verify dependency requirements and commit lockfiles; do not blindly reuse obsolete starter commands.
+- PHPUnit, Pint, Vite, and Laravel Sanctum. Local private filesystem, database notifications, database session/cache where appropriate, and local mail logging for password resets.
+- A daily Laravel scheduler for alerts/reconciliation. No paid services, real email provider, Redis, Docker, AI API, or dedicated queue worker is required for the baseline.
+- Use placeholders in .env.example; keep secrets and real employee/medical files out of Git and chat. Configure a separate disposable MySQL test database before running tests.
 
-Mandatory requirements:
-1. Multi-role authorization for at least Administrator/Compliance Officer, Facility Manager, and Regular Staff. Enforce access server-side with policies/Gates.
-2. Authentication with registration where enabled, login, logout, password reset, secure password hashing, and session management.
-3. Advanced relationships, including many-to-many employee-to-qualification and job-role-to-qualification relationships, plus a Region-to-Employee has-many-through relationship through facilities/assignments.
-4. Factories and seeders that create at least 1,000 total realistic records.
-5. Validated PDF/image credential upload and authorized download using Laravel Storage.
-6. A versioned, token-protected JSON verification API under /api/v1.
-7. Unit tests for expiry/eligibility logic and feature tests for roles, uploads, downloads, authentication, and API responses.
-8. Clear Laravel MVC separation with web/API controllers and business rules outside Blade templates.
+Agreed identity and scope:
+- Six separate roles: Admin, Compliance Officer, Regional Director, Facility Manager, Staff, and API-only Auditor. One role per account; application role is distinct from employee job role.
+- Self-registration creates unassigned Staff. Only Admin assigns facility/job/role. Unassigned staff get an awaiting-assignment page and cannot access employee records or enrollment/submission workflows.
+- Each employee has one facility and job. Managers see one assigned facility, directors one assigned region. Auditor tokens are limited to an assigned region plus verification:read ability.
+- Admin handles account/configuration/token administration. Officers record training completion and review evidence across facilities. Managers/directors read scoped summaries; managers update assigned corrective findings. Staff access only their records. Nobody approves their own evidence.
+- Raw document downloads are limited to owner, officer, and Admin. Auditor accounts have no web dashboard. Enforce policies/Gates and scoped queries at the server, including reports and API access.
 
-Core domain:
-- Regions contain facilities.
-- Facilities have assigned employees.
-- Employees have job roles and qualifications.
-- Job roles require qualifications.
-- Employees submit credential documents as evidence.
-- Compliance officers verify or reject evidence.
-- Audits record regional or facility readiness reviews and findings.
+Complete system scope, delivered in stages:
+1. Authentication: registration, login/logout, reset, profile, secure sessions, throttling, and role-aware navigation.
+2. Organization/configuration: regions, facilities, jobs, safety domains, qualifications, mandatory job requirements, and employee assignments.
+3. Training: separate published/archived courses mapped to one qualification each; staff self-enrollment; unique employee/course enrollment pivot; officer-recorded completion/date/feedback. Renewed course offerings use new records. No learning-content or exam platform.
+4. Credentials: staff PDF/JPEG/PNG submissions, metadata, private storage, authorized attachment downloads, officer approval/rejection, rejection reasons, and append-only submission/review history. Default upload maximum is configurable 10 MiB. Validate actual MIME, dates, enrollment ownership, and matching qualification. Every renewal is a new submission; cleanup failed storage/record writes.
+5. Qualification/compliance: employee/qualification and job/qualification many-to-many relationships; training qualifications require completed linked enrollment AND approved valid evidence. Enrollment/completion alone grants nothing.
+6. Dashboards and history: staff qualification matrix, officer queue, facility/regional readiness, Admin screens, and material compliance-change history. Compute through one shared service rather than duplicating rules in controllers/views.
+7. Audits/reports: scoped officer-created audits, immutable readiness snapshots, corrective findings with assigned manager/due date/resolution, and filtered CSV readiness/expiry/training/findings exports. Neutralize spreadsheet formulas in exports.
+8. In-app alerts: daily warning/expired events to affected staff and facility managers, deduplication, unread indicators, and mark-as-read. Explain scheduler operation; current validity is still calculated on read if scheduling stops.
+9. Auditor API: GET /api/v1/verifications/{reference}, Sanctum, explicit ability, regional scope, active account checks, token expiry/revocation, rate limits, and minimal API Resource. Opaque references identify individual submissions, not employee-wide eligibility. Return no files, medical details, paths, names, or private reviewer feedback.
 
-Implement in vertical slices:
-1. Inspect the existing repository before changing files.
-2. Create/configure the Laravel application and authentication foundation.
-3. Implement migrations, models, factories, and policies for users, regions, facilities, job roles, and qualifications.
-4. Implement credential document upload, private storage, metadata, verification, and authorized downloads.
-5. Centralize compliance calculations for missing, pending, valid, expiring, and expired requirements.
-6. Build staff, management, and dashboard Blade pages.
-7. Add audits and findings.
-8. Add Sanctum and GET /api/v1/verifications/{reference}, returning only deliberately limited verification fields.
-9. Add relationship-aware seeders with at least 1,000 records.
-10. Run focused tests after each slice and the full test suite before declaring completion.
+Compliance rules:
+- Evaluate calendar dates in Asia/Manila; store event timestamps in UTC. Approved evidence is valid through its expiry date, including today. Permit absent expiry only for qualifications explicitly defined as non-expiring.
+- Warn from today through 30 calendar days ahead, inclusive; expiring-soon evidence remains compliant.
+- Required missing/pending/rejected/expired evidence and incomplete required training block eligibility. A pending renewal cannot invalidate older approved evidence that still qualifies; choose any qualifying approval, not simply the latest upload.
+- Percentage = satisfied mandatory qualifications / all mandatory qualifications * 100. Use exact counts for eligibility and round only for display.
+- Missing facility/job or no configured requirements means not assessable, never automatically 100% compliant. Optional qualifications do not affect the denominator.
+- Keep review state separate from derived validity. Preserve historical reviews, submissions, assignments in recorded snapshots, and audit results. Do not delete referenced history.
+- Record material changes and reconcile date-driven changes idempotently. All dashboard/report/API results must agree under the same clock and inputs.
 
-Important behavior:
-- Staff can manage their own profile and submit evidence but cannot approve their own credentials or other users' credentials.
-- Facility managers can view and manage records for their assigned facility only.
-- Compliance officers can approve/reject credentials and manage requirements.
-- Every document download must check authorization; never expose storage paths publicly.
-- Validate file MIME/type and size before storage.
-- Do not return private document files or unnecessary personal data through the auditor API.
-- Use clear validation errors and authorization responses; do not silently ignore failures.
-- Keep compliance calculations in one reusable class/service so dashboards, API responses, and tests use the same rules.
+Mandatory academic requirements:
+- Multi-role policies/Gates and complete authentication.
+- Actual Eloquent many-to-many employee/qualification, job/qualification, and employee/course relationships.
+- Actual Region hasManyThrough Staff through Facility, using facilities.region_id and users.facility_id and filtering Staff.
+- Relationship-aware factories/seeders with at least 1,000 total synthetic records; report counts by table. Use harmless evidence fixtures or clearly unavailable-file states.
+- Validated private Storage uploads/downloads.
+- Versioned Sanctum JSON API with auth, ability, scope, privacy, and rate-limit tests.
+- Unit tests for eligibility/date logic and feature tests for authentication, roles/scopes, training completion, review transitions, uploads/downloads, reports, notifications, and API behavior.
+- Laravel MVC with separate web/API routes/controllers, Form Requests, Eloquent, migrations, factories, policies, Blade components, and small shared services.
 
-Expected first deliverable:
-- A working Laravel foundation with authentication, the core migrations/models, role policies, a base Blade layout, and tests for the first implemented workflows.
-- Update main/docs/Implementation.md after each meaningful milestone.
-- Explain any schema or design decision that differs from main/docs/System-Proposal.md.
+Work method:
+- Propose the next small vertical slice, then implement it with authorization, validation, focused tests, and docs. Do not scaffold or ship the entire system in one change.
+- Preserve main/docs/. To scaffold in this nonempty repository, use a temporary location if needed and deliberately transfer application files without overwriting Git metadata or documentation.
+- Use a feature branch and coherent PR. Update Implementation.md with actual completed items and evidence; do not mark future work done. Explain deviations from agreed decisions before dependent changes.
+- Run focused checks during work, then full PHPUnit, Pint, and asset build as applicable before handover. Use the separate MySQL test database, never the development data. Never run destructive database resets without explicit authorization.
+- Test cross-user/facility/region denial, self-approval, concurrent review, incomplete training, expiry boundaries, pending renewals, missing configuration, scheduler deduplication, token abilities/revocation, and sensitive-field exclusion as those features arrive.
+- Keep runtime setup reproducible: exact versions/commands, Herd URL, MySQL setup, frontend build, private storage, mail logs, scheduler, synthetic demo accounts, API examples, backup/restore, and known limitations.
+- Ask only when missing decisions materially block work. Do not reopen choices already confirmed. Deadline and team experience can be supplied later; do not invent a delivery date.
 
-Before finishing:
-- Run the project formatter/linter if configured.
-- Run focused tests and then the full test suite.
-- Verify seeded counts meet the 1,000-record requirement.
-- Check that unauthorized users cannot access management pages or private files.
-- Check that unauthenticated API requests fail and valid Sanctum requests return the documented JSON shape.
-- Report changed files, tests run, and any known limitations.
+First development deliverable:
+Implement milestone 0 only: a runnable Laravel foundation at the repository root, compatible Blade session authentication, base layout, unassigned-staff onboarding, secure Admin assignment boundary, private-storage configuration, dedicated MySQL test setup, local setup instructions, and focused authentication/privilege tests. Minimal account role/assignment fields may be introduced to enforce this boundary; defer organization CRUD and other module UIs to later milestones.
+
+Before changing files, report the proposed exact framework/auth setup after checking compatibility. At handover, report changed behavior, actual checks/results, local configuration still needed, PR link if created, and the next milestone. Keep the rest of the agreed system visible in the plan without presenting it as implemented.
 ```
-
-## Suggested First Commands
-
-Once the Laravel application exists, the team can adapt these commands to the configured project:
-
-```bash
-php artisan migrate
-php artisan db:seed
-php artisan test
-php artisan serve
-```
-
-The exact authentication starter and frontend build commands should follow the Laravel version selected for the project.
