@@ -3,6 +3,12 @@
 .env
 .env.backup
 .env.production
+.env.testing
+/.checkpoint-scaffold
+/.agents/
+/.claude/
+/CLAUDE.md
+/storage/framework/testing-mysql/
 .phpactor.json
 .phpunit.result.cache
 /.codex

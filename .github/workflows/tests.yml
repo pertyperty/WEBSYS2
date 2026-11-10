@@ -1,0 +1,56 @@
+name: Foundation checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: main
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: checkpoint_test
+          MYSQL_USER: checkpoint_test
+          MYSQL_PASSWORD: ci-only-test-password
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: checkpoint_test
+      DB_PASSWORD: ci-only-test-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, mbstring, intl
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: main/package-lock.json
+      - run: composer install --no-interaction --prefer-dist
+      - run: cp .env.testing.example .env.testing
+      - run: php artisan key:generate --env=testing
+      - run: npm ci
+      - run: npm run build
+      - run: composer validate --strict
+      - run: php vendor/bin/pint --test
+      - run: php artisan test --compact

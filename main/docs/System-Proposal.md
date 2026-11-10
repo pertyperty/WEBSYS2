@@ -2,11 +2,11 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics across multiple regions and facilities. It replaces scattered attachments and spreadsheets with private evidence storage, training and qualification tracking, scoped compliance reporting, and controlled auditor verification.
 
-This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). No application code has been implemented.
+This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). The authentication/onboarding foundation is implemented; the remaining domain modules below describe planned behavior.
 
 ## Architecture and boundaries
 
-Use one Laravel application with MySQL, Blade, Tailwind CSS, and Alpine.js for small interactions. Use PHPUnit and Pint. Herd serves the local classroom demo. Select and lock a supported Laravel release and compatible authentication dependencies during foundation work.
+Use one Laravel application with MySQL, Blade, Tailwind CSS, and Alpine.js for small interactions. Use PHPUnit and Pint. Laravel 13.40 and Fortify 1.41 are selected and locked for the foundation. Herd serves the Laravel application in `main/` at `http://websys2.test`.
 
 Use web sessions for browser authentication, Sanctum for auditor tokens, Eloquent, Form Requests, policies/Gates, and a small number of services for shared rules. Separate web/API controllers and routes. Avoid business calculations in Blade, generic repository layers, microservices, and a separate SPA.
 

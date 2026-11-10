@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureStaffAssigned;
+use App\Http\Middleware\EnsureWebAccount;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->web(append: [EnsureWebAccount::class]);
+        $middleware->alias(['assigned' => EnsureStaffAssigned::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
