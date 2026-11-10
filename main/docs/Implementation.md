@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** agreed project planning, documentation only.
+**Stage:** foundation implemented and verified against local Herd/MySQL; administrator walkthrough pending.
 **Last updated:** 2026-11-10.
-**Application status:** not scaffolded; no database migrations, dependencies, or runtime tests yet.
+**Application status:** Laravel 13.40/Fortify 1.41 authentication, unassigned-staff onboarding, administrator assignment, minimal organization records, private-storage configuration, and tests are implemented. Full domain modules are not implemented.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -14,12 +14,14 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 0 Foundation and local setup
 
-- [ ] Inspect the current repository and preserve `main/docs/`; scaffold Laravel at the repository root without overwriting existing content.
-- [ ] Record supported framework/PHP/Node/MySQL versions and lock dependencies. Choose compatible session authentication with Blade; do not assume a legacy starter works with the chosen release.
-- [ ] Verify/start the existing MySQL service as appropriate; configure dedicated development/test databases and placeholder-only `.env.example`.
-- [ ] Establish Herd domain, Vite scripts, private storage, mail log, PHPUnit, and Pint.
-- [ ] Deliver registration, login/logout, password reset, profile, base layout, and awaiting-assignment screen. Only Admin controls role/job/facility assignment.
-- [ ] Document exact fresh setup commands and verify frontend build, formatting, and authentication tests against the test database.
+- [x] Inspect the current repository and preserve `main/docs/`; scaffold Laravel at the repository root without overwriting existing content.
+- [x] Record supported framework/PHP/Node/MySQL versions and lock dependencies. Choose compatible session authentication with Blade; do not assume a legacy starter works with the chosen release.
+- [x] Verify/start the existing MySQL service as appropriate; configure dedicated development/test databases and placeholder-only `.env.example`.
+- [x] Establish Vite scripts, private storage, mail log, PHPUnit, and Pint. Herd serves the repository at `http://websys2.test` (login HTTP 200 verified).
+- [x] Deliver registration, login/logout, password reset, profile, base layout, and awaiting-assignment screen. Only Admin controls role/job/facility assignment.
+- [x] Document exact fresh setup commands and verify frontend build, formatting, and authentication tests against the test database.
+
+**Verification:** 22 tests / 141 assertions passed against the existing MySQL80 service on 127.0.0.1:3306 on 2026-11-10, using the isolated `checkpoint_test` database/account. Development migrations and the repeatable organization fixture seeder completed in `checkpoint` using a separate application account. Existing database accounts were preserved. Herd is running and the login page returned HTTP 200 at `http://websys2.test/login`. Administrator creation and the interactive account walkthrough remain owner tasks. Pint, Composer validation, Blade compilation, and Vite build passed during foundation implementation. A GitHub Actions MySQL workflow is included; remote results are not claimed here. The earlier temporary server on port 3307 remains stopped. The foundation includes minimal organization models/foreign keys, a tested regional has-many-through relation, an idempotent fixture seeder, and an interactive administrator creation command. These do not complete milestone 1's CRUD/requirements scope.
 
 **Acceptance:** a fresh checkout can be configured from the README; sessions work; a new account has no employee-record access or role escalation path. Password reset is demonstrated through local logs. Only this foundation is the first development deliverable.
 
@@ -116,6 +118,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 |---|---|---|
 | 2026-11-05 | Initial proposal, implementation plan, and prompt | Existing documentation-only commits |
 | 2026-11-10 | Reconciled Word proposal with owner decisions; added training/enrollment, precise rules, services, milestones, and co-developer prompt | Documentation PR; no application implementation or runtime tests |
+| 2026-11-10 | Implemented foundation and added API learning guide | Laravel 13.40/Fortify 1.41, 22 tests/141 assertions on isolated MySQL, Pint, Composer validation, Blade compilation, and Vite build; main local service configuration pending |
 
 ## Risks and responses
 

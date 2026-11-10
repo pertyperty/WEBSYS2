@@ -27,7 +27,7 @@ This record separates decisions confirmed during planning from implementation de
 
 ## Remaining context
 
-The owner will provide deadline and team experience later. No instructor-required version or additional package has been supplied. These are scheduling inputs, not implied constraints. Select a supported compatible framework release during scaffolding and record exact versions then.
+The owner will provide deadline and team experience later. No instructor-required version or additional package has been supplied. These are scheduling inputs, not implied constraints. The foundation uses Laravel 13.40, Fortify 1.41, PHPUnit 12.5, Tailwind 4, Alpine 3, and Vite 8; exact versions are in lockfiles.
 
 ## Local services and tools
 
@@ -35,15 +35,16 @@ The owner will provide deadline and team experience later. No instructor-require
 |---|---|---|
 | PHP and Composer | Laravel runtime and dependencies | Available: PHP 8.4.27 and Composer 2.10.3. PHP includes `pdo_mysql`, `fileinfo`, and required common extensions. Recheck requirements against the chosen framework release. |
 | Laravel installer | Scaffold the application | Available: installer 5.32.0. This is not the application's Laravel framework version. Select a supported compatible framework release when development starts and commit lockfiles. |
-| Herd | Serve the local application | User reports it installed. Link the eventual project root and verify the local domain and HTTPS configuration. |
-| MySQL | Application and test persistence | Existing `MySQL80` Windows service was found stopped. Client was not on PATH. Verify server version/access, start/configure it at development time, and create separate development/test databases with a dedicated local account. No service or database was modified during planning. |
+| Herd | Serve the local application | Desktop app is running; repository linked at `http://websys2.test`. Login returned HTTP 200 on 2026-11-10. |
+| MySQL | Application and test persistence | Existing `MySQL80` is running on 127.0.0.1:3306. Dedicated local application/test accounts connect to `checkpoint` and `checkpoint_test` respectively; credentials remain in ignored environment files. Development migrations/seeding and 22 tests / 141 assertions passed on 2026-11-10. The earlier temporary instance on port 3307 remains stopped. |
 | Node and npm | Vite and frontend asset builds | Node 22.20.0 is available. Check package engine requirements and npm before scaffolding. |
 | Private Laravel filesystem | Credential storage | Local private disk is sufficient; no object-storage service is required. Never expose credentials through `public/storage`. |
 | Laravel scheduler | Daily expiry alerts | Run `php artisan schedule:work` during local demonstrations; document that alerts do not run while the process is stopped. |
 | Mail log | Local password-reset demonstration | Use `MAIL_MAILER=log`; reset links stay on the local machine and are not sent to real addresses. |
 | Session/cache/notification storage | Authentication and in-app alerts | Laravel database-backed drivers and database notifications are sufficient. No Redis or separate message broker is needed. |
 | Git and GitHub | Version control and PR review | Origin is `pertyperty/WEBSYS2`; Git works. GitHub CLI is not on PATH; a connected GitHub tool can create PRs. |
-| PHPUnit, Pint, Sanctum | Tests, formatting, auditor tokens | Add compatible versions as project dependencies during foundation work. PHPUnit is the agreed test framework. |
+| PHPUnit and Pint | Tests and formatting | Installed and checked. PHPUnit is the agreed test framework. Sanctum is deferred to the auditor API milestone. |
+| Fortify and Boost | Authentication and development guidance | Fortify 1.41 provides session authentication with custom Blade views. The Laravel scaffold's agent instructions required Boost; it is a development-only dependency, with local generated skills ignored by Git. |
 
 No Docker, cloud host, paid API, AI API, antivirus service, or dedicated queue worker is required for the local baseline. Add a service only for a specific accepted need. Use synthetic credentials and employees for demonstrations.
 
@@ -53,4 +54,4 @@ One coding agent working with the team is sufficient. Repository reading/editing
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-Core planning choices are resolved. Implementation starts when the user asks to begin. This PR plans the application; it does not install dependencies or scaffold code.
+The owner authorized development and asked to learn the API as it is implemented. The foundation is implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.

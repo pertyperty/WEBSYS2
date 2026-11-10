@@ -1,18 +1,18 @@
 # CheckPoint co-developer kickoff prompt
 
-Use this prompt in the next development session after asking the co-developer to start. It implements the decisions already agreed with the owner; the current documentation PR does not authorize scaffolding during planning. Supply deadline/team experience when known. The prompt is intentionally staged so the first PR remains reviewable.
+Use this prompt to continue development. The foundation is now implemented; inspect the progress record and do not recreate it. Supply deadline/team experience when known. Work in reviewable milestones and explain the auditor API as it is built.
 
 ```text
 Act as our co-developer for CheckPoint, a Regional Safety Compliance Management System for healthcare logistics. Help our student team build an understandable, complete Laravel system and explain decisions we need to maintain and defend.
 
-Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, and main/docs/Implementation.md. Preserve unrelated changes and existing documentation. These files describe the agreed scope; the original Word proposal is the business source. The application does not exist yet. Do not mistake Laravel Installer's version for a framework version.
+Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, main/docs/Implementation.md, and main/docs/API-Learning-Path.md. Preserve unrelated changes and existing documentation. The Laravel 13.40/Fortify 1.41 foundation already exists at the repository root. Check implemented code and remaining setup rather than scaffolding again. The original Word proposal is the business source.
 
 Agreed stack and services:
 - One Laravel application at the repository root; Blade, Tailwind, and Alpine.js for small interactions. No separate SPA, microservices, or generic repository abstraction.
 - MySQL, matching the proposal. Do not substitute PostgreSQL even though it is installed.
-- Herd for the local classroom demo. Check the existing MySQL80 Windows service, reported stopped during planning; verify server/version/access before installing another server or changing configuration.
-- Select a supported Laravel release compatible with the actual PHP runtime and choose a compatible Blade authentication setup. Verify dependency requirements and commit lockfiles; do not blindly reuse obsolete starter commands.
-- PHPUnit, Pint, Vite, and Laravel Sanctum. Local private filesystem, database notifications, database session/cache where appropriate, and local mail logging for password resets.
+- Herd for the local classroom demo. The existing MySQL80 service and Herd were verified running on 2026-11-10; the login page is served at `http://websys2.test`. Recheck their status when resuming.
+- Keep the selected Laravel 13/Fortify 1 session-auth setup with Blade. Verify installed versions and lockfiles before relying on package APIs; do not blindly reuse obsolete starter commands.
+- PHPUnit, Pint, Vite, and Laravel Sanctum in the API milestone. Local private filesystem, database notifications in their milestone, database session/cache, and local mail logging for password resets. Boost is already installed as a development-only dependency.
 - A daily Laravel scheduler for alerts/reconciliation. No paid services, real email provider, Redis, Docker, AI API, or dedicated queue worker is required for the baseline.
 - Use placeholders in .env.example; keep secrets and real employee/medical files out of Git and chat. Configure a separate disposable MySQL test database before running tests.
 
@@ -55,15 +55,18 @@ Mandatory academic requirements:
 
 Work method:
 - Propose the next small vertical slice, then implement it with authorization, validation, focused tests, and docs. Do not scaffold or ship the entire system in one change.
-- Preserve main/docs/. To scaffold in this nonempty repository, use a temporary location if needed and deliberately transfer application files without overwriting Git metadata or documentation.
+- Preserve main/docs/ and the existing application. Do not overwrite Git metadata, local configuration, or existing code with a new scaffold.
 - Use a feature branch and coherent PR. Update Implementation.md with actual completed items and evidence; do not mark future work done. Explain deviations from agreed decisions before dependent changes.
 - Run focused checks during work, then full PHPUnit, Pint, and asset build as applicable before handover. Use the separate MySQL test database, never the development data. Never run destructive database resets without explicit authorization.
 - Test cross-user/facility/region denial, self-approval, concurrent review, incomplete training, expiry boundaries, pending renewals, missing configuration, scheduler deduplication, token abilities/revocation, and sensitive-field exclusion as those features arrive.
 - Keep runtime setup reproducible: exact versions/commands, Herd URL, MySQL setup, frontend build, private storage, mail logs, scheduler, synthetic demo accounts, API examples, backup/restore, and known limitations.
 - Ask only when missing decisions materially block work. Do not reopen choices already confirmed. Deadline and team experience can be supplied later; do not invent a delivery date.
 
-First development deliverable:
-Implement milestone 0 only: a runnable Laravel foundation at the repository root, compatible Blade session authentication, base layout, unassigned-staff onboarding, secure Admin assignment boundary, private-storage configuration, dedicated MySQL test setup, local setup instructions, and focused authentication/privilege tests. Minimal account role/assignment fields may be introduced to enforce this boundary; defer organization CRUD and other module UIs to later milestones.
+Next development deliverable:
+The existing foundation is configured against MySQL80 on port 3306 with separate development/test accounts; migrations, organization seeding, and 22 tests / 141 assertions passed. Administrator creation and the interactive walkthrough remain owner tasks. Recheck local service availability as needed. Never print or commit credentials. Then implement the earliest incomplete milestone in Implementation.md, normally milestone 1: organization CRUD, domains/qualifications/job requirements, and scoped permissions, with tests. The minimal region/facility/job schema, Admin assignment boundary, and regional relationship already exist; extend them rather than duplicating them.
+
+Learning requirement:
+Explain relevant concepts in plain language while developing. Follow API-Learning-Path.md: first web routes and sessions, then evidence/domain rules, then the versioned JSON route and Resource, then Sanctum tokens, abilities, region checks, errors, and tests. Let the owner run small requests as each piece becomes available. Clearly distinguish implemented endpoints from planned examples.
 
 Before changing files, report the proposed exact framework/auth setup after checking compatibility. At handover, report changed behavior, actual checks/results, local configuration still needed, PR link if created, and the next milestone. Keep the rest of the agreed system visible in the plan without presenting it as implemented.
 ```
