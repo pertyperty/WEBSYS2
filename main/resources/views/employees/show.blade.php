@@ -7,7 +7,7 @@
     </p>
     <section class="panel mt-8">
         <h2 class="text-lg font-semibold">Mandatory job qualifications</h2>
-        <p class="mb-5 mt-2 text-sm text-slate-600">These are requirements, not awarded qualifications. Evidence, training completion, and eligibility will be assessed in later milestones.</p>
+        <p class="mb-5 mt-2 text-sm text-slate-600">These are requirements, not awarded qualifications. Training is recorded in Training progress. Evidence review and eligibility assessment follow in later milestones.</p>
         @if(! $employee->facility_id || ! $employee->job_role_id)
             <p class="mb-4 text-sm font-semibold text-amber-800">Assignment incomplete: this employee cannot be assessed.</p>
         @endif

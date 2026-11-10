@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** milestone 1 implemented; training courses/enrollment are next.
+**Stage:** milestone 2 implemented; private credentials and review history are next.
 **Last updated:** 2026-11-10.
-**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Training, evidence, compliance, audits, alerts, reports, and the auditor API remain planned.
+**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Evidence, compliance, audits, alerts, reports, and the auditor API remain planned.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -41,12 +41,14 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 2 Training courses and enrollment
 
-- [ ] Add course management, publication/archival, course-to-qualification mapping, and employee/course enrollment pivot.
-- [ ] Allow assigned staff to self-enroll in published courses; enforce one enrollment per course.
-- [ ] Let officers record completion and feedback; prevent staff from recording their own completion.
-- [ ] Add staff progress pages and scoped management summaries.
+- [x] Add course management, publication/archival, course-to-qualification mapping, and employee/course enrollment pivot.
+- [x] Allow assigned staff to self-enroll in published courses; enforce one enrollment per course.
+- [x] Let officers record completion and feedback; prevent staff from recording their own completion.
+- [x] Add staff progress pages and scoped management summaries.
 
 **Acceptance:** enrollment alone grants no qualification; unpublished courses cannot accept enrollment; completed training and its recorded actor/date survive course archival.
+
+**Milestone 2 evidence:** 105 tests / 702 assertions pass on isolated MySQL, including 36 training cases. Course/enrollment tables are additive and the repeatable seeder creates two published offerings without enrolling anyone or republishing archived records. Completion date/actor/feedback survive archival. Staff see their own progress; manager/director totals and rows share one scope. Admin can manage courses but only Officer records completion. Qualification mapping is locked after enrollment; archived courses and recorded completions cannot be reopened/overwritten. Training alone does not populate employee qualification awards.
 
 ### 3 Private credentials and review history
 
@@ -134,7 +136,7 @@ Explain the data distinctions:
 
 - `users.job_role_id` assigns one job to a Staff account. `facility_id` assigns one facility, whose `region_id` determines the region. Directors have a direct regional assignment; managers have a facility assignment.
 - `job_role_qualification` defines what a job requires. `employee_qualification` is a separate many-to-many relationship reserved for effective earned qualifications after evidence review in milestone 3. Setting requirements does not write employee awards.
-- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion and evidence checks are not implemented yet.
+- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion is recorded separately. The evidence checks are the next milestone.
 - Inactive records remain in the database. Region/domain deactivation is blocked by active child records; assigned accounts block region/facility/job deactivation. Required qualifications cannot be deactivated until removed from job requirements. Account assignments accept only active configuration records.
 - A facility with assigned accounts cannot be moved between regions. Reassign the accounts first so an indirect edit cannot silently move their visibility. Account-role validation still requires complete assignments for managers/directors.
 - No requirements means not assessable in the future compliance module, never automatically 100% compliant. The current page displays requirements without claiming an eligibility result.
@@ -148,6 +150,24 @@ Useful demonstration questions:
 5. **How do we prove correctness?** Feature tests send real HTTP requests against separate MySQL test data, then check responses and persisted state. They cover allowed and denied actions, cross-scope IDs, malformed inputs, deactivation dependencies, and escaped user-supplied names.
 6. **What about third-party APIs?** This milestone uses server-rendered web routes and session authentication. The later auditor API will return a minimal JSON representation and use tokens; it will still need role and regional scope checks. No external provider or API token is required now.
 
+### Training request walkthrough
+
+| File (inside `main/`) | Responsibility |
+|---|---|
+| [TrainingCourseController.php](../app/Http/Controllers/TrainingCourseController.php) | Publishes/archives offerings and prevents qualification remapping after enrollment. An archived offering stays archived so renewals use a new record. |
+| [SaveTrainingCourseRequest.php](../app/Http/Requests/SaveTrainingCourseRequest.php) | Validates title, description, status, and an active training-required qualification/domain. Archived records may retain their inactive qualification. |
+| [TrainingEnrollmentController.php](../app/Http/Controllers/TrainingEnrollmentController.php) | Saves the signed-in Staff account's enrollment, never a submitted employee ID. Locks the course while checking it is open, then uses `firstOrCreate()` and a unique employee/course pair for repeat submissions. |
+| [TrainingCompletionController.php](../app/Http/Controllers/TrainingCompletionController.php) | Officer-only completion. Locks the enrollment, rejects own/already-completed records, and stores completion date, officer ID, and optional feedback together. |
+| [CompleteTrainingRequest.php](../app/Http/Requests/CompleteTrainingRequest.php) | Validates a calendar date between enrollment and today in Asia/Manila. Enrollment timestamps stay in UTC; completed_at is a calendar-date column. |
+| [EmployeeTraining.php](../app/Models/EmployeeTraining.php) | A normal Eloquent model for the enrollment pivot because the relationship has its own ID, dates, state, and reviewer. Its visibility scope also constrains aggregate counts. |
+| [TrainingCourse.php](../app/Models/TrainingCourse.php) | Belongs to one qualification, has many enrollment records, and belongs to many employees through the same pivot. Published course metadata is browsable; unpublished history is visible only within the viewer's enrollment scope. |
+
+Defend the distinction between the two relationships: `User::trainingCourses()` describes course enrollment through `employee_trainings`; `User::qualifications()` describes effective qualification awards through `employee_qualification`. Neither enrolling nor recording completion writes the qualification award pivot. In milestone 3, training evidence must reference a matching completed enrollment before Officer approval.
+
+The database unique key enforces one enrollment per employee/offering, even when requests repeat. A transaction and row lock serialize completion updates; a second request sees the completed state and cannot overwrite the first officer's record. Course updates and enrollment use the same course lock so an archive and enrollment do not race on the publication state. All update paths still require their Gates; a valid date alone never authorizes completion.
+
+Useful training demonstrations: Staff submits again without getting a duplicate; Admin is denied completion despite managing courses; a manager sees only scoped totals; an archived completed course remains in Staff history; changing a course's qualification after enrollment is rejected; a Manila date is accepted across a UTC midnight boundary. `TrainingCourseTest` and `TrainingEnrollmentTest` exercise these rules. Course content delivery, exams, completion corrections, and CSV progress exports are outside this milestone; renewal offerings use new records.
+
 ## Definition of done
 
 A workflow is complete when its persistence, validation, policy, UI/API, error states, focused tests, usable seed data, and documentation are present. Run relevant tests and formatter/build checks; before handover run the full suite. Report actual results and limitations. Never run tests or destructive seed/reset commands against a populated development database.
@@ -160,6 +180,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 | 2026-11-10 | Reconciled Word proposal with owner decisions; added training/enrollment, precise rules, services, milestones, and co-developer prompt | Documentation PR; no application implementation or runtime tests |
 | 2026-11-10 | Implemented foundation and added API learning guide | Laravel 13.40/Fortify 1.41, 22 tests/141 assertions on isolated MySQL, Pint, Composer validation, Blade compilation, and Vite build; main local service configuration pending |
 | 2026-11-10 | Implemented organization/qualification management, job requirements, scoped employee pages, and defense walkthrough | 69 tests/454 assertions on isolated MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
+| 2026-11-10 | Implemented training courses/enrollment, officer completion, scoped progress, and training defense walkthrough | 105 tests/702 assertions on MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 
 ## Risks and responses
 

@@ -88,4 +88,10 @@ class User extends Authenticatable
             UserRole::Auditor => $query->whereKey([]),
         };
     }
+
+    public function trainingCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(TrainingCourse::class, 'employee_trainings', 'employee_id', 'training_course_id')
+            ->withPivot(['id', 'status', 'enrolled_at', 'completed_at', 'completed_by', 'feedback'])->withTimestamps();
+    }
 }

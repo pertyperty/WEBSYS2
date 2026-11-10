@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CourseStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,12 @@ class SaveQualificationRequest extends FormRequest
     {
         return [function (Validator $validator): void {
             $qualification = $this->route('qualification');
+            if ($qualification && $qualification->trainingCourses()->exists() && ! $this->boolean('requires_training')) {
+                $validator->errors()->add('requires_training', 'Keep training required while course history exists.');
+            }
+            if ($qualification && ! $this->boolean('is_active') && $qualification->trainingCourses()->where('status', '!=', CourseStatus::Archived)->exists()) {
+                $validator->errors()->add('is_active', 'Archive linked courses before deactivating this qualification.');
+            }
             if ($qualification && ! $this->boolean('is_active') && $qualification->jobRoles()->exists()) {
                 $validator->errors()->add('is_active', 'Remove this qualification from job requirements before deactivating it.');
             }

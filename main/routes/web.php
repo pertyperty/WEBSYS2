@@ -7,6 +7,9 @@ use App\Http\Controllers\JobRoleController;
 use App\Http\Controllers\QualificationController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SafetyDomainController;
+use App\Http\Controllers\TrainingCompletionController;
+use App\Http\Controllers\TrainingCourseController;
+use App\Http\Controllers\TrainingEnrollmentController;
 use App\Http\Controllers\UserAssignmentController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,4 +43,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
         Route::get('/employees/{employee}', [EmployeeController::class, 'show'])->whereNumber('employee')->name('employees.show');
     });
+
+    Route::middleware('can:manage-courses')->group(function () {
+        Route::resource('training-courses', TrainingCourseController::class)->parameters(['training-courses' => 'course'])->except(['index', 'show', 'destroy']);
+    });
+
+    Route::middleware(['assigned', 'can:view-training'])->group(function () {
+        Route::get('/training-courses', [TrainingCourseController::class, 'index'])->name('training-courses.index');
+        Route::get('/training-courses/{course}', [TrainingCourseController::class, 'show'])->whereNumber('course')->name('training-courses.show');
+        Route::get('/training-enrollments', [TrainingEnrollmentController::class, 'index'])->name('training-enrollments.index');
+    });
+    Route::post('/training-courses/{course}/enrollments', [TrainingEnrollmentController::class, 'store'])
+        ->middleware('can:enroll-training')->name('training-enrollments.store');
+    Route::patch('/training-enrollments/{enrollment}/completion', [TrainingCompletionController::class, 'update'])
+        ->middleware('can:complete-training')->name('training-completions.update');
 });

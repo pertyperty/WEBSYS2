@@ -1,7 +1,7 @@
 <x-layout title="Dashboard">
     <p class="text-xs font-semibold uppercase tracking-widest text-teal-800">{{ auth()->user()->role->label() }}</p>
     <h1 class="mt-2 text-3xl font-bold">Welcome, {{ auth()->user()->name }}</h1>
-    <p class="mt-3 text-slate-600">Organization records and job requirements are available. Compliance and training modules will be added in the next milestones.</p>
+    <p class="mt-3 text-slate-600">Organization records and job requirements are available. Courses, enrollment, and training progress are available. Evidence review and compliance assessment are next.</p>
     <div class="mt-8 grid gap-6 md:grid-cols-2">
         <section class="panel">
             <h2 class="text-lg font-semibold">Account details</h2>

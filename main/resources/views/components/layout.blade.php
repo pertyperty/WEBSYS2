@@ -25,6 +25,10 @@
                 @endcan
                 @can('manage-requirements')<a href="{{ route('job-roles.index') }}">Jobs & requirements</a>@endcan
                 @can('view-employees')<a href="{{ route('employees.index') }}">Employees</a>@endcan
+                @can('view-training')
+                    <a href="{{ route('training-courses.index') }}">Courses</a>
+                    <a href="{{ route('training-enrollments.index') }}">Training progress</a>
+                @endcan
                 <a href="{{ route('profile') }}">Profile</a>
                 <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="cursor-pointer text-teal-300">Sign out</button></form>
             @else

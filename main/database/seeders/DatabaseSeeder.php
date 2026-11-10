@@ -20,6 +20,6 @@ class DatabaseSeeder extends Seeder
         $region->facilities()->firstOrCreate(['name' => 'Demo Logistics Hub']);
         JobRole::firstOrCreate(['name' => 'Driver']);
         JobRole::firstOrCreate(['name' => 'Warehouse Staff']);
-        $this->call([SafetyDomainSeeder::class, QualificationSeeder::class]);
+        $this->call([SafetyDomainSeeder::class, QualificationSeeder::class, TrainingCourseSeeder::class]);
     }
 }

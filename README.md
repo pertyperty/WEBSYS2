@@ -1,6 +1,6 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation and organization/qualification management are implemented; training, credentials, compliance calculations, audits, alerts, reports, and auditor API remain planned.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Credentials, compliance calculations, audits, alerts, reports, and the auditor API remain planned.
 
 ## Available now
 
@@ -10,6 +10,7 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Admin management of regions, facilities, jobs, safety domains, and qualifications, with safe deactivation.
 - Admin/Officer maintenance of mandatory job qualifications, grouped by safety domain.
 - Employee directory and requirement pages limited to the viewer's facility, region, or own record.
+- Draft/published/archived courses, Staff self-enrollment, Officer-recorded completion, and scoped training progress.
 - Private local storage configuration with automatic file serving disabled; uploads/downloads arrive later.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
@@ -43,7 +44,7 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates a demo region/hub, two jobs, two safety domains, and two training-required qualifications linked to the demo jobs. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
+The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates a demo region/hub, two jobs, two safety domains, and two training-required qualifications linked to the demo jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
@@ -73,7 +74,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The organization/requirements milestone is verified with **69 tests and 454 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; the new catalog migration is additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **105 tests and 702 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog and training migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -84,8 +85,16 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 3. Register a Staff account and assign its facility/job as Admin. Open **Employees** to inspect its inherited requirements. Requirements do not award a qualification or indicate eligibility.
 4. Sign in with facility manager/regional director accounts assigned through **Accounts**. They see only employees in their facility/region. A changed employee ID outside that scope returns 404. Staff see only themselves; unassigned Staff remain on onboarding.
 5. Try deactivating an assigned facility/job or a required qualification. Validation explains the dependency to resolve. A facility cannot move regions while accounts are assigned. Records are retained and may be reactivated; there are no delete actions.
-6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Training completion, uploads, compliance percentages, and the API remain future milestones.
+6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Uploads, compliance percentages, and the API remain future milestones.
 
+
+## Training walkthrough
+
+1. As Admin or Compliance Officer, open **Courses** and add a draft course mapped to a training-required qualification. Publish it when ready for enrollment. The demo seeder includes two published offerings and does not republish archived ones.
+2. As assigned Staff, browse the published catalog and enroll. Refresh or submit again: the same employee/course enrollment is retained. Staff cannot enroll other accounts or record completion.
+3. As Compliance Officer, open **Training progress**, record a completion date and optional feedback. The date must fall between the enrollment date and today in Asia/Manila. Admin manages courses but cannot record completion; officers cannot complete their own old enrollments.
+4. View Staff progress again. It shows the officer, completion date, and feedback, without awarding a qualification. Approved, valid evidence is still required in the later credential workflow.
+5. Archive the course. Enrollment/completion history stays visible to the employee and scoped managers/directors. The qualification mapping is locked after the first enrollment, and recorded completions cannot be overwritten. Create a new offering for renewals.
 
 ## Documentation and next milestones
 
