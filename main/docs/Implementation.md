@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** milestone 4 implemented; notifications, audits, and reports are next.
+**Stage:** milestone 5 implemented; the restricted auditor API is next.
 **Last updated:** 2026-11-10.
-**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. Audits, in-app alerts, reports, and the auditor API remain planned.
+**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. In-app expiry alerts, immutable audit snapshots, corrective findings, and scoped CSV reports are implemented. The auditor API remains planned.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -73,11 +73,11 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 5 Notifications, audits, and reports
 
-- [ ] Add daily idempotent expiry reconciliation and in-app notifications for staff/managers, with deduplication and unread controls.
-- [ ] Add officer-authored facility/regional audits with immutable readiness snapshots.
-- [ ] Add findings, assigned managers, due dates, corrective notes, and resolution workflow.
-- [ ] Add scoped CSV readiness, expiry, training, and findings reports with formula-injection handling.
-- [ ] Document `php artisan schedule:work` and the effect of stopping it.
+- [x] Add daily idempotent expiry reconciliation and in-app notifications for staff/managers, with deduplication and unread controls.
+- [x] Add officer-authored facility/regional audits with immutable readiness snapshots.
+- [x] Add findings, assigned managers, due dates, corrective notes, and resolution workflow.
+- [x] Add scoped CSV readiness, expiry, training, and findings reports with formula-injection handling.
+- [x] Document `php artisan schedule:work` and the effect of stopping it.
 
 **Acceptance:** repeating the scheduled command does not duplicate alerts/history; status-on-read stays correct without it. A later credential renewal does not rewrite old audit snapshots. Exports and finding updates respect scope.
 
@@ -206,7 +206,7 @@ The assessor has no writes. `DashboardController` and `QualificationMatrixContro
 
 Assignment changes (including Staff role removal), submissions, reviews, and completions record history inside the same business transaction. Submission/review/completion all lock the employee before child records to keep lock ordering consistent. Requirement sync and qualification updates commit their configuration change first, then reconcile affected Staff one at a time. This avoids holding a configuration write lock while waiting for an employee lock; if bulk reconciliation is interrupted, the already-saved configuration remains authoritative and reads/the command repair history. Other catalog edits are reconciled on employee detail/history reads or the next daily run. The current data is computed live immediately on aggregate pages; aggregate reads do not create one history write per employee.
 
-`ComplianceHistoryController` scopes the employee before reading snapshots. After a transfer, the old manager gets 404 and the new manager can see retained historical assignment context. Managers/directors receive summary states without access to private evidence or notes. `checkpoint:reconcile-compliance` runs idempotently for Staff at 00:05 Asia/Manila with overlap protection. Run it manually for a classroom demonstration or keep `php artisan schedule:work` running. A stopped scheduler delays history recording of date-only changes; it does not make dashboard/matrix/detail eligibility stale. This command does not yet deliver notifications.
+`ComplianceHistoryController` scopes the employee before reading snapshots. After a transfer, the old manager gets 404 and the new manager can see retained historical assignment context. Managers/directors receive summary states without access to private evidence or notes. `checkpoint:reconcile-compliance` runs idempotently for Staff at 00:05 Asia/Manila with overlap protection. Run it manually for a classroom demonstration or keep `php artisan schedule:work` running. A stopped scheduler delays history recording of date-only changes; it does not make dashboard/matrix/detail eligibility stale. This command also delivers deduplicated expiry notifications; see the milestone 5 walkthrough below.
 
 Defense questions to practice:
 
@@ -262,3 +262,22 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 | Alerts silently stop | Document scheduler process and calculate current validity on read. |
 | Test commands destroy local work | Separate MySQL test database and environment guards. |
 | Existing MySQL service is unavailable | Check service/version/access before scaffolding; document setup without silently switching database engines. |
+
+
+## Milestone 5 walkthrough for the defense
+
+`ReconcileExpiryAlerts::currentEvents` reads the same current assessment and qualifying-evidence predicate as the readiness pages. It emits warnings only for effective required approvals in the 30-day window. Without a current approval, it selects the most recently expired qualifying approval, including when a renewal is pending. Optional evidence, unassigned/inactive employees, and inactive/incomplete configuration do not generate alerts. Non-expiring approvals need no warning.
+
+`checkpoint:reconcile-compliance` records material history and reconciles alerts per employee. The alert operation locks the employee row and creates a Laravel database-notification row with a stable UUID derived from recipient, employee, qualification, document, and event. The primary key makes retries safe even after a partial command run. `notifications()` and `unreadNotifications()` are Laravel's existing relationships. A separate notification class/queue is unnecessary for these database-only, synchronous events. Notification reads, unread counts, and read updates additionally require ownership and current employee scope. A manager's former employee alerts are retained in storage but hidden after transfer. Renewed/removed requirements show old alerts as no longer current without deleting them; relevance is calculated on read, not trusted from yesterday's scheduler result. Unread retained history remains in the unread count until marked read.
+
+`CaptureAudit` uses a transaction to read a consistent MySQL snapshot, evaluates employees at one Manila date, and stores summary results as JSON with author and scope. It does not create missing compliance-history rows as a side effect. There are no audit update/delete routes. Later evidence, job/requirement changes, and assignment names do not rewrite this JSON. `Audit::visibleTo` gives directors regional access and managers only facility-specific snapshots. A manager can still see their own facility's finding from a regional audit through `AuditFinding::visibleTo`, without receiving the full regional readiness snapshot.
+
+Finding creation validates audit/facility/active-manager consistency, then checks mutable assignment again inside its transaction. `FindingUpdateController` locks the actor/optional replacement manager before the finding. It appends activity before changing the current status. Assigned current-facility managers can record progress or submit for verification. Officers can reopen, reassign within the facility, and resolve submitted work; the latest corrective author and assignee cannot self-verify. Activity has no edit/delete route. Resolution timestamps clear when an officer reopens work. Overdue means unresolved with a due date before today in Manila.
+
+`BuildComplianceReport` supplies both preview and CSV rows. Employee reports reuse `User::visibleTo`; finding reports use the fixed finding scope. Explicit facility filters are restricted to the viewer's assignments. The preview stops at 25 rows and omits repeated Region/Assessed on context columns; CSV keeps every column and iterates in 100-row chunks. Training shows enrollments, not awarded qualifications. Expiry shares the alert event calculation and stays current when scheduling stops. CSV excludes private paths, review feedback, and corrective notes, quotes cells with `fputcsv` and no proprietary escape character, and prefixes formula markers (including leading whitespace/BOM/control characters) with an apostrophe. PDF export remains deferred.
+
+Defense exercise: capture an audit; record and approve a renewal; compare the unchanged audit with live People/readiness; assign and submit a finding; attempt manager self-resolution; verify it as a separate officer; filter and download a report; run reconciliation twice and show that notification/history counts are unchanged. Use synthetic evidence. Database factories support isolated tests; no fabricated audits or findings are inserted into the development database.
+
+Operationally, run `php artisan checkpoint:reconcile-compliance` manually, or `php artisan schedule:work` locally. The existing schedule remains daily at 00:05 Asia/Manila with overlap protection. Production must invoke `schedule:run` each minute and monitor failures. If scheduling stops, new alerts and date-only history are delayed; all current assessments, expiry reports, and alert relevance remain accurate. No new package, external provider, or queue service was added.
+
+Validation for this milestone: the full isolated MySQL suite passes with **200 tests / 1,457 assertions**, including 22 new notification, audit/finding, scope, and CSV cases. Eight Node interaction tests, Pint, strict Composer validation, production Vite build, and Blade compilation pass. Additive migrations were applied to the local development database without resetting existing data. Remote CI is not claimed by these local results.

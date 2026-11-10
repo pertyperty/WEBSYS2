@@ -60,3 +60,8 @@ We will also assert that names, medical content, file paths, private feedback, a
 ## Learning checkpoint
 
 At the end, you should be able to explain who provides and consumes this API, how a request becomes JSON, how session and token authentication differ, why abilities and region policies are separate, and how tests prove both useful behavior and denied access. We will update this guide with actual setup and runnable commands when the API milestone is implemented.
+
+
+## What the reporting milestone adds
+
+The four CSV downloads are authenticated web responses under `/reports/download`, not the planned third-party JSON API. Their preview and download share the same scoped row builder. A session establishes identity; the report Gate and current facility/region scope determine which rows are permitted. Audit capture similarly uses the shared assessment but stores a fixed historical result. Next, milestone 6 will expose a minimal submission verification through a versioned JSON Resource and an explicitly scoped token; no API token or external-provider request is needed for the current screens.

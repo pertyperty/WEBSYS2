@@ -20,6 +20,8 @@
                 <button type="button" class="icon-button lg:hidden" aria-label="Open navigation" aria-haspopup="dialog" @click="$refs.mobileNavigation.showModal()"><x-icon name="menu" /></button>
                 <span class="truncate text-sm font-medium text-slate-500">{{ $title }}</span>
             </div>
+            <div class="flex items-center gap-2">
+            @can('view-notifications')<a class="button-secondary" href="{{ route('notifications.index') }}" aria-label="Notifications, {{ $unreadAlertCount }} unread"><x-icon name="document" /><span class="hidden sm:inline">Alerts</span>@if($unreadAlertCount)<span class="rounded-full bg-rose-100 px-2 text-xs font-bold text-rose-800">{{ $unreadAlertCount }}</span>@endif</a>@endcan
             <details class="account-menu relative shrink-0" @keydown.escape="$el.open = false" @click.outside="$el.open = false">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-xl px-2 focus-visible:outline-2 focus-visible:outline-teal-700">
                     <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
@@ -31,6 +33,7 @@
                     <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-sub-link w-full text-left">Sign out</button></form>
                 </div>
             </details>
+            </div>
         </header>
         <dialog x-ref="mobileNavigation" class="mobile-navigation lg:hidden" aria-label="Navigation" @click="if ($event.target === $el) $el.close()">
             <div class="flex h-full w-72 max-w-[85vw] flex-col bg-white">

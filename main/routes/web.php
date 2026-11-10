@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AuditController;
+use App\Http\Controllers\AuditFindingController;
 use App\Http\Controllers\ComplianceHistoryController;
 use App\Http\Controllers\CredentialDocumentController;
 use App\Http\Controllers\CredentialDownloadController;
@@ -7,11 +9,14 @@ use App\Http\Controllers\CredentialReviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FacilityController;
+use App\Http\Controllers\FindingUpdateController;
 use App\Http\Controllers\JobRequirementController;
 use App\Http\Controllers\JobRoleController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QualificationController;
 use App\Http\Controllers\QualificationMatrixController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SafetyDomainController;
 use App\Http\Controllers\TrainingCompletionController;
 use App\Http\Controllers\TrainingCourseController;
@@ -77,4 +82,24 @@ Route::middleware('auth')->group(function () {
     });
     Route::post('/credentials/{document}/reviews', [CredentialReviewController::class, 'store'])
         ->middleware('can:review-credentials')->name('credentials.reviews.store');
+});
+
+Route::middleware(['auth', 'assigned', 'can:view-audits'])->group(function () {
+    Route::get('/audits', [AuditController::class, 'index'])->name('audits.index');
+    Route::get('/audits/create', [AuditController::class, 'create'])->name('audits.create');
+    Route::post('/audits', [AuditController::class, 'store'])->name('audits.store');
+    Route::get('/audits/{audit}', [AuditController::class, 'show'])->whereNumber('audit')->name('audits.show');
+    Route::post('/audits/{audit}/findings', [AuditFindingController::class, 'store'])->whereNumber('audit')->name('audit-findings.store');
+    Route::get('/findings', [AuditFindingController::class, 'index'])->name('findings.index');
+    Route::get('/findings/{finding}', [AuditFindingController::class, 'show'])->whereNumber('finding')->name('findings.show');
+    Route::post('/findings/{finding}/updates', [FindingUpdateController::class, 'store'])->whereNumber('finding')->name('finding-updates.store');
+});
+Route::middleware(['auth', 'assigned', 'can:view-notifications'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'store'])->name('notifications.read-all');
+    Route::patch('/notifications/{notification}', [NotificationController::class, 'update'])->name('notifications.update');
+});
+Route::middleware(['auth', 'assigned', 'can:view-reports'])->group(function () {
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/download', [ReportController::class, 'show'])->name('reports.download');
 });

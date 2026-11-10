@@ -2,7 +2,7 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics across multiple regions and facilities. It replaces scattered attachments and spreadsheets with private evidence storage, training and qualification tracking, scoped compliance reporting, and controlled auditor verification.
 
-This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, reports, and the API below remain planned.
+This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, and CSV reports are implemented. The restricted auditor API below remains planned.
 
 ## Architecture and boundaries
 
@@ -86,7 +86,7 @@ Use one service across dashboards, reports, audit snapshots, and API responses. 
 
 Provide staff self-service pages, officer review queue, administrative configuration, and facility/regional dashboards. Include eligible/non-compliant/not-assessable totals, missing evidence, pending reviews, expiring qualifications, and training progress. Dashboard denominators explicitly identify assessable staff and show not-assessable counts separately. Use scoped filters, pagination, and eager loading.
 
-Officers create audits with scope, author/date, immutable readiness snapshot, findings, due dates, and corrective actions. Managers update findings assigned to them within their facility. Historical snapshots do not change when current evidence or requirements change. Employee assessment history and audit findings remain distinct.
+Officers create audits with scope, author/date, immutable readiness snapshot, findings, due dates, and corrective actions. Managers update findings assigned to them within their facility. Historical snapshots do not change when current evidence or requirements change. Employee assessment history and audit findings remain distinct. Managers submit corrective work for officer verification; officers can reopen or reassign within the facility, retaining dated notes and assignment activity. Neither an assigned manager nor the latest corrective author may verify their own work. Captures use today's readiness; backdated capture is not supported.
 
 CSV reports cover readiness, expiry, training progress, and findings with the same authorization/filters as browser pages. Exclude private paths and medical content; neutralize cells beginning with spreadsheet formula markers. PDF exports are deferred.
 

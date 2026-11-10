@@ -1,6 +1,6 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. Audits, in-app alerts, reports, and the auditor API remain planned.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. In-app expiry alerts, fixed audit snapshots, corrective work, and scoped CSV reports are implemented. The restricted auditor API is next.
 
 ## Available now
 
@@ -14,7 +14,9 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Private PDF/JPEG/PNG submissions, protected attachment downloads, append-only submission/review events, and officer review.
 - Current qualifying-evidence selection preserves older valid approvals while renewals are pending or rejected.
 - Live employee eligibility, qualification matrix, scoped dashboard denominators, and append-only material assessment snapshots.
-- Daily Manila-time reconciliation, with status calculated on read even when the scheduler is stopped.
+- Daily Manila-time reconciliation and deduplicated staff/manager expiry alerts, with live status calculated even when scheduling stops.
+- Officer-captured facility/regional audits, fixed readiness snapshots, assigned corrective work, officer verification, and retained activity.
+- Scoped readiness, expiry, training, and findings reports with CSV downloads protected against spreadsheet formulas.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -51,7 +53,7 @@ The administrator command prompts for name, unique email, and a hidden password.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
-The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. Daily compliance history reconciliation is scheduled; in-app expiry notifications remain planned. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
+The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. Daily compliance history reconciliation and in-app expiry alerts are scheduled at 00:05 Asia/Manila. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
 
 ## First walkthrough
 
@@ -77,7 +79,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **142 tests and 963 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **200 tests and 1,457 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -129,7 +131,7 @@ From `main/`, run the additive `php artisan migrate` after pulling this mileston
 2. Open **Matrix**, then an employee. The matrix combines qualifications required by staff on the current page. N/A means a qualification is not required by that employee's job; it never means awarded.
 3. Submit synthetic evidence, complete required training as Officer, and review the linked evidence. The employee becomes eligible only when every mandatory qualification has valid approved evidence. A newer pending renewal keeps an older valid approval effective.
 4. Open **View assessment history**. Material snapshots retain assignment names, required qualification states, counts, actor/source, and date. Refreshing an unchanged result does not append another row. Managers/directors see summaries without private files or review notes.
-5. For date transitions, run `php artisan checkpoint:reconcile-compliance`. It appends changed results only. For continuous local scheduling, run `php artisan schedule:work` in a separate terminal during the demo; the task is due daily at 00:05 Asia/Manila. Stop with Ctrl+C. Pages calculate live state even without this process. In-app alerts arrive in milestone 5.
+5. For date transitions, run `php artisan checkpoint:reconcile-compliance`. It appends changed results only. For continuous local scheduling, run `php artisan schedule:work` in a separate terminal during the demo; the task is due daily at 00:05 Asia/Manila. Stop with Ctrl+C. Pages calculate live state even without this process. The same command delivers deduplicated expiry alerts to affected Staff and facility managers.
 
 Evidence is valid through its expiry date in Asia/Manila. Warnings include today through 30 days ahead. No assignment, no requirements, or inactive required configuration gives a null percentage and **Not assessable**. Eligibility compares exact counts, independently of the rounded display percentage. See the [compliance defense walkthrough](main/docs/Implementation.md#compliance-calculation-and-history-defense-walkthrough).
 
@@ -146,3 +148,16 @@ Evidence is valid through its expiry date in Asia/Manila. Warnings include today
 CheckPoint will **provide** an API consumed by third-party auditors. That API is not implemented in this foundation. We will explain and exercise it incrementally during its milestone, using placeholder tokens in shared examples.
 
 To regenerate local Laravel Boost agent guidance/skills, run `php artisan boost:install --guidelines --skills --no-interaction` after configuring `.env`. Boost is a development-only tool; generated local skill folders are ignored. The Word proposal is unchanged, and `main/docs/` is retained. Deadline and team experience are still to be supplied.
+
+
+## Alerts, audits, corrective work, and reports walkthrough
+
+Run `php artisan migrate` from `main/` after pulling; no data reset is required.
+
+1. As Staff or the assigned facility manager, open **Alerts** in the top bar. Required approved evidence generates one warning during the inclusive 30-day window and a separate event after expiry. Run `php artisan checkpoint:reconcile-compliance` to deliver them now. Re-running does not duplicate events. Approved renewal makes older alerts read as **No longer current**, while retaining their history. The unread count includes retained unread history; use **Mark all as read** to clear it.
+2. As a Compliance Officer, open **Audits > Capture audit**. Choose a region and optionally a facility. The facility list follows the region selection. Capture saves today's assessment and the original assignment/requirement context. It cannot be edited or deleted through the application. A scope with no employees cannot be captured.
+3. In the audit, assign a finding to an active manager of the selected facility, with a due date and a clear corrective task. The manager list follows the facility. Managers can view facility-specific audits, and their facility's individual findings from regional audits; they cannot open the full regional snapshot.
+4. As the assigned manager, open **Corrective work**, add dated notes, and submit for verification. Only an officer can verify and resolve submitted work, and the officer cannot verify their own latest corrective submission. Officers can reopen work or reassign it within the same facility; activity retains notes and reassignment names. Old managers lose write access after a transfer or reassignment.
+5. As Admin, Officer, manager, or director, open **Reports**, select the report and optional facility/search filter, and apply. The preview shows up to 25 rows; **Download CSV** includes every matching row within the same authorization scope. Findings search uses the title; other reports search employee names. Expiry uses the same current events as alerts, independently of notification delivery. Private attachments, reviewer feedback, and corrective notes are excluded.
+
+For continuous local scheduling, keep `php artisan schedule:work` running. Production needs the normal once-per-minute `schedule:run` operating-system task. Stopping scheduling delays new alerts and date-only history entries; live readiness, expiry reports, and old-alert relevance still calculate correctly. Alerts are synchronous database writes, so no mail provider or queue worker was added.

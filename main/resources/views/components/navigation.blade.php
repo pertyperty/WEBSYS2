@@ -29,6 +29,16 @@
                 </ul>
             </div>
         @endcan
+        @can('view-audits')
+            <div>
+                <p class="nav-group-label">Follow-up & reports</p>
+                <ul class="mt-2 space-y-1">
+                    @foreach(['audits' => 'Audits', 'findings' => 'Corrective work', 'reports' => 'Reports'] as $section => $label)
+                        <li><a href="{{ route($section.'.index') }}" class="nav-link {{ request()->routeIs($section.'.*') ? 'nav-link-active' : '' }}" @if(request()->routeIs($section.'.*')) aria-current="page" @endif><x-icon :name="$section === 'findings' ? 'check' : 'document'" />{{ $label }}</a></li>
+                    @endforeach
+                </ul>
+            </div>
+        @endcan
         @can('manage-requirements')
             <details class="navigation-settings" @if(request()->routeIs('admin.*', 'regions.*', 'facilities.*', 'job-roles.*', 'qualifications.*', 'safety-domains.*')) open @endif>
                 <summary class="nav-link cursor-pointer"><x-icon name="settings" />Administration<x-icon name="chevron" class="ml-auto size-4" /></summary>
