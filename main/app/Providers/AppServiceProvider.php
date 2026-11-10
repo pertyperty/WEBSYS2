@@ -24,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('manage-users', fn (User $user): bool => $user->is_active && $user->role === UserRole::Admin);
+        Gate::define('manage-organization', fn (User $user): bool => $user->is_active && $user->role === UserRole::Admin);
+        Gate::define('manage-requirements', fn (User $user): bool => $user->is_active && in_array($user->role, [UserRole::Admin, UserRole::ComplianceOfficer], true));
+        Gate::define('view-employees', fn (User $user): bool => $user->is_active && $user->role !== UserRole::Auditor);
         Password::defaults(fn (): Password => Password::min(12)->letters()->numbers());
     }
 }

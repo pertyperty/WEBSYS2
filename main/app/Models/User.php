@@ -7,8 +7,11 @@ use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -57,5 +60,32 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
         ];
+    }
+
+    public function qualifications(): BelongsToMany
+    {
+        return $this->belongsToMany(Qualification::class, 'employee_qualification', 'employee_id', 'qualification_id')->withTimestamps();
+    }
+
+    #[Scope]
+    protected function visibleTo(Builder $query, User $viewer): Builder
+    {
+        $query->where('role', UserRole::Staff);
+
+        if (! $viewer->is_active) {
+            return $query->whereKey([]);
+        }
+
+        return match ($viewer->role) {
+            UserRole::Admin, UserRole::ComplianceOfficer => $query,
+            UserRole::RegionalDirector => $viewer->region_id
+                ? $query->whereHas('facility', fn (Builder $facilities): Builder => $facilities->where('region_id', $viewer->region_id))
+                : $query->whereKey([]),
+            UserRole::FacilityManager => $viewer->facility_id
+                ? $query->where('facility_id', $viewer->facility_id)
+                : $query->whereKey([]),
+            UserRole::Staff => $query->whereKey($viewer->id),
+            UserRole::Auditor => $query->whereKey([]),
+        };
     }
 }

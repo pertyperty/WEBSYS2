@@ -1,13 +1,15 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation is implemented; training, credentials, compliance calculations, audits, alerts, reports, and auditor API remain planned.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation and organization/qualification management are implemented; training, credentials, compliance calculations, audits, alerts, reports, and auditor API remain planned.
 
 ## Available now
 
 - Laravel 13.40, Fortify 1.41, Blade, Tailwind 4, Alpine.js, and Vite 8, with committed dependency lockfiles.
 - Staff registration, login/logout, password reset through local mail logs, and profile/password changes.
 - Six role definitions, unassigned-staff onboarding, and administrator-only account assignments/deactivation.
-- Minimal region/facility/job records for assignment. Full organization management is milestone 1.
+- Admin management of regions, facilities, jobs, safety domains, and qualifications, with safe deactivation.
+- Admin/Officer maintenance of mandatory job qualifications, grouped by safety domain.
+- Employee directory and requirement pages limited to the viewer's facility, region, or own record.
 - Private local storage configuration with automatic file serving disabled; uploads/downloads arrive later.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
@@ -41,7 +43,7 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The foundation seeder is repeatable and creates a demo region/hub and two jobs; the 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
+The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates a demo region/hub, two jobs, two safety domains, and two training-required qualifications linked to the demo jobs. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
@@ -55,7 +57,7 @@ The default local disk is `storage/app/private`. Do not expose it through a publ
 4. Refresh the staff dashboard. It shows its assignment and clearly states that compliance assessments are not implemented yet.
 5. Try a password reset and profile/password change. Staff must not be able to open `/admin/users` or assign their own role.
 
-Full CRUD and scope-specific compliance pages are deliberately deferred. Director/manager dashboards currently show only foundation account information. Auditor accounts are blocked from browser login; their API will be implemented later.
+Organization and qualification configuration is available through the navigation. Directors/managers can browse their scoped employee directory; staff can view only their own requirements. The dashboard still shows account information without a compliance calculation. Auditor accounts are blocked from browser login; their API will be implemented later.
 
 ## Checks
 
@@ -71,7 +73,19 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The foundation was verified locally with **23 tests and 142 assertions** against the running MySQL80 service on port 3306 on 2026-11-10. Dedicated local accounts isolate `checkpoint` from `checkpoint_test`; credentials are stored only in ignored environment files. Development migrations and the organization fixture seeder completed, and Herd returned HTTP 200 for `http://websys2.test/login`. Pint, Composer validation, Blade compilation, and the Vite build passed during foundation implementation. The earlier disposable server on port 3307 remains stopped. Run administrator commands from `main/`; any existing administrator remains in the development database. Complete the interactive walkthrough if you have not already done so.
+The organization/requirements milestone is verified with **69 tests and 454 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; the new catalog migration is additive. Herd serves `main/` at `http://websys2.test`.
+
+## Organization and requirements walkthrough
+
+Run commands from `main/`. After pulling this milestone, run `php artisan migrate` and optionally `php artisan db:seed` for demonstration fixtures; no database reset is needed.
+
+1. As Admin, create a region, facility, job, safety domain, and qualification. Qualifications specify whether expiry and training completion will be required.
+2. Open **Jobs & requirements**, choose a job, and select mandatory qualifications. A Compliance Officer can maintain these requirements but cannot manage organization records or account roles.
+3. Register a Staff account and assign its facility/job as Admin. Open **Employees** to inspect its inherited requirements. Requirements do not award a qualification or indicate eligibility.
+4. Sign in with facility manager/regional director accounts assigned through **Accounts**. They see only employees in their facility/region. A changed employee ID outside that scope returns 404. Staff see only themselves; unassigned Staff remain on onboarding.
+5. Try deactivating an assigned facility/job or a required qualification. Validation explains the dependency to resolve. A facility cannot move regions while accounts are assigned. Records are retained and may be reactivated; there are no delete actions.
+6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Training completion, uploads, compliance percentages, and the API remain future milestones.
+
 
 ## Documentation and next milestones
 

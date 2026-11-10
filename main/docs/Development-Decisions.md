@@ -54,4 +54,6 @@ One coding agent working with the team is sufficient. Repository reading/editing
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-The owner authorized development and asked to learn the API as it is implemented. The foundation is implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+The owner authorized development and asked to learn the API as it is implemented. The foundation and organization/qualification milestone are implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+
+The code must be explainable during the defense: use focused resource controllers, Form Requests, explicit relationships and Gates, and one reusable employee visibility scope. The code walkthrough and demonstration questions are maintained in [Implementation](Implementation.md#code-walkthrough-for-the-defense).

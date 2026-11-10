@@ -16,11 +16,11 @@ class UserAssignmentController extends Controller
     public function index(): View
     {
         return view('admin.users', [
-            'users' => User::orderBy('name')->paginate(15),
+            'users' => User::orderBy('name')->orderBy('id')->paginate(15),
             'roles' => UserRole::cases(),
-            'facilities' => Facility::orderBy('name')->get(),
-            'jobs' => JobRole::orderBy('name')->get(),
-            'regions' => Region::orderBy('name')->get(),
+            'facilities' => Facility::active()->orderBy('name')->get(),
+            'jobs' => JobRole::active()->orderBy('name')->get(),
+            'regions' => Region::active()->orderBy('name')->get(),
         ]);
     }
 
