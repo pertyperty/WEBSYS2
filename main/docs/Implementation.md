@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** milestone 2 implemented; private credentials and review history are next.
+**Stage:** milestone 3 implemented; compliance calculations, dashboards, and assessment history are next.
 **Last updated:** 2026-11-10.
-**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Evidence, compliance, audits, alerts, reports, and the auditor API remain planned.
+**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Compliance dashboards/history, audits, alerts, reports, and the auditor API remain planned.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -52,13 +52,15 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 3 Private credentials and review history
 
-- [ ] Add immutable submissions, metadata, opaque references, configurable upload limits, and append-only submission/review events.
-- [ ] Implement validated PDF/JPEG/PNG storage and authorized downloads with failed-write cleanup.
-- [ ] Add officer review queue, approval/rejection with reasons, and transactional concurrent-review protection.
-- [ ] Validate completed matching enrollment before approving training-required evidence.
-- [ ] Preserve existing valid approvals while a renewal is pending; do not overwrite prior files/reviews.
+- [x] Add immutable submissions, metadata, opaque references, configurable upload limits, and append-only submission/review events.
+- [x] Implement validated PDF/JPEG/PNG storage and authorized downloads with failed-write cleanup.
+- [x] Add officer review queue, approval/rejection with reasons, and transactional concurrent-review protection.
+- [x] Validate completed matching enrollment before approving training-required evidence.
+- [x] Preserve existing valid approvals while a renewal is pending; do not overwrite prior files/reviews.
 
 **Acceptance:** cross-user downloads, manager/director raw-file access, self-approval, invalid file content/size, and conflicting reviews are rejected. Approved training evidence has completed linked enrollment.
+
+**Milestone 3 evidence:** 142 tests / 963 assertions pass against isolated MySQL, including 37 credential cases. Credential/event tables and the effective-document FK are additive. Submissions retain facility/job IDs from the time of submission. Raw evidence/history is limited to Staff ownership and Admin/Officer oversight; only Officer reviews, never their own evidence. Missing files cannot receive new approval. No evidence records/files are seeded yet; staff upload synthetic files through the real workflow.
 
 ### 4 Compliance, dashboards, and history
 
@@ -136,7 +138,7 @@ Explain the data distinctions:
 
 - `users.job_role_id` assigns one job to a Staff account. `facility_id` assigns one facility, whose `region_id` determines the region. Directors have a direct regional assignment; managers have a facility assignment.
 - `job_role_qualification` defines what a job requires. `employee_qualification` is a separate many-to-many relationship reserved for effective earned qualifications after evidence review in milestone 3. Setting requirements does not write employee awards.
-- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion is recorded separately. The evidence checks are the next milestone.
+- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion is recorded separately. Evidence validation and review are implemented; employee-wide compliance is next.
 - Inactive records remain in the database. Region/domain deactivation is blocked by active child records; assigned accounts block region/facility/job deactivation. Required qualifications cannot be deactivated until removed from job requirements. Account assignments accept only active configuration records.
 - A facility with assigned accounts cannot be moved between regions. Reassign the accounts first so an indirect edit cannot silently move their visibility. Account-role validation still requires complete assignments for managers/directors.
 - No requirements means not assessable in the future compliance module, never automatically 100% compliant. The current page displays requirements without claiming an eligibility result.
@@ -162,11 +164,33 @@ Useful demonstration questions:
 | [EmployeeTraining.php](../app/Models/EmployeeTraining.php) | A normal Eloquent model for the enrollment pivot because the relationship has its own ID, dates, state, and reviewer. Its visibility scope also constrains aggregate counts. |
 | [TrainingCourse.php](../app/Models/TrainingCourse.php) | Belongs to one qualification, has many enrollment records, and belongs to many employees through the same pivot. Published course metadata is browsable; unpublished history is visible only within the viewer's enrollment scope. |
 
-Defend the distinction between the two relationships: `User::trainingCourses()` describes course enrollment through `employee_trainings`; `User::qualifications()` describes effective qualification awards through `employee_qualification`. Neither enrolling nor recording completion writes the qualification award pivot. In milestone 3, training evidence must reference a matching completed enrollment before Officer approval.
+Defend the distinction between the two relationships: `User::trainingCourses()` describes course enrollment through `employee_trainings`; `User::qualifications()` describes effective qualification awards through `employee_qualification`. Neither enrolling nor recording completion writes the qualification award pivot. Training evidence references an owned matching enrollment, which must be completed before Officer approval.
 
 The database unique key enforces one enrollment per employee/offering, even when requests repeat. A transaction and row lock serialize completion updates; a second request sees the completed state and cannot overwrite the first officer's record. Course updates and enrollment use the same course lock so an archive and enrollment do not race on the publication state. All update paths still require their Gates; a valid date alone never authorizes completion.
 
 Useful training demonstrations: Staff submits again without getting a duplicate; Admin is denied completion despite managing courses; a manager sees only scoped totals; an archived completed course remains in Staff history; changing a course's qualification after enrollment is rejected; a Manila date is accepted across a UTC midnight boundary. `TrainingCourseTest` and `TrainingEnrollmentTest` exercise these rules. Course content delivery, exams, completion corrections, and CSV progress exports are outside this milestone; renewal offerings use new records.
+
+### Credential request walkthrough
+
+| File (inside `main/`) | Responsibility |
+|---|---|
+| [StoreCredentialDocumentRequest.php](../app/Http/Requests/StoreCredentialDocumentRequest.php) | Validates content-based MIME/size, readable images, issue/expiry dates, active qualification/domain, and ownership/mapping of a training enrollment. Submission can precede training completion. |
+| [SubmitCredential.php](../app/Actions/SubmitCredential.php) | Stores a generated name on the private local disk, creates metadata and a submitted event in one DB transaction, and removes the new file if persistence fails. Existing evidence is preserved. The employee identity/assignment, reference, path, and status are server controlled. |
+| [CredentialDocumentController.php](../app/Http/Controllers/CredentialDocumentController.php) | Provides a scoped list/status filter, submission form, and read-only details/history. Its detail view uses the current selection query and handles unavailable files. |
+| [CredentialDownloadController.php](../app/Http/Controllers/CredentialDownloadController.php) | Resolves permission/ownership before opening a private stream. Returns an attachment with a reference-derived name, no-store, nosniff, and sandbox headers; missing files return a controlled 404. |
+| [ReviewCredential.php](../app/Actions/ReviewCredential.php) | Serializes reviews with employee/document row locks. Checks pending state, actor separation, rejection reason, stored file availability, and completed matching training before approval. Saves status, a decision event, and the effective pivot link atomically. |
+| [SelectEffectiveCredential.php](../app/Actions/SelectEffectiveCredential.php) | Finds an approved document valid today in Asia/Manila, with required completed training. It filters candidates before choosing the newest issue date/ID, so a new pending/rejected/expired submission cannot mask an older valid approval. |
+| [CredentialDocument.php](../app/Models/CredentialDocument.php) and [CredentialEvent.php](../app/Models/CredentialEvent.php) | Define metadata, current terminal review state, append-only workflow events, and relationships. Private paths are hidden from serialization. There are no HTTP metadata/event edit or delete routes. |
+
+A credential's review status is `pending`, `approved`, or `rejected`. Expiry is evaluated separately, so a historical approval is never rewritten into an expiry decision. The events record submission and review actors, dates, and feedback. The record keeps its submission-time facility/job IDs; current employee assignment still controls later scoped compliance access. Neither managers nor directors may read raw private evidence or review details through these routes.
+
+The `employee_qualification.credential_document_id` link is a materialized current-evidence pointer updated after review. It is not a source of truth for date validity: time may pass without a new write. The detail page calls the selection action on read. Milestone 4 must reuse that action and reconcile assessment history, rather than treating an old pivot as proof of current compliance. Whole-employee eligibility is not implemented in this milestone.
+
+Defend the failure boundaries: a database transaction cannot roll back a filesystem write, so submission explicitly cleans up its newly stored file. A failed history insert rolls back the new document; a failed review event rolls back the review status and pivot. A review locks the employee before the document so simultaneous reviews of different submissions for the same employee serialize their effective-link update. A stale second decision sees the terminal state and fails. Rejection feedback is required and HTML-escaped. Approval checks that the file is available; missing historical files are shown without exposing a storage path.
+
+`CredentialSubmissionTest` uses real test-mode uploaded files for content cases. Laravel's upload fake normally derives MIME from the supplied name; relying on that fake would miss renamed script payloads. Tests also cover JPEG/PNG bytes, file-size limits, failed writes, rollback cleanup preserving old evidence, transfer context, role/ownership denial, safe attachment headers, stale decisions, incomplete training, pending renewals, non-expiring qualifications, and the Manila midnight expiry boundary. Tests use a fake disk and the dedicated MySQL test database; no private demonstration uploads are reset.
+
+Content-based MIME checks are not antivirus scanning or full PDF parsing. Downloads are attachments on authenticated routes, not inline public URLs. Backups and the final demonstration dataset remain milestone 7 work; no nonexistent seeded evidence is presented as a working download.
 
 ## Definition of done
 
@@ -181,6 +205,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 | 2026-11-10 | Implemented foundation and added API learning guide | Laravel 13.40/Fortify 1.41, 22 tests/141 assertions on isolated MySQL, Pint, Composer validation, Blade compilation, and Vite build; main local service configuration pending |
 | 2026-11-10 | Implemented organization/qualification management, job requirements, scoped employee pages, and defense walkthrough | 69 tests/454 assertions on isolated MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 | 2026-11-10 | Implemented training courses/enrollment, officer completion, scoped progress, and training defense walkthrough | 105 tests/702 assertions on MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
+| 2026-11-10 | Implemented private credentials, immutable review events, current-evidence selection, and defense walkthrough | 142 tests/963 assertions on MySQL; additive migration; upload/privacy/failure-path coverage; Pint, Composer validation, Blade and Vite checks |
 
 ## Risks and responses
 

@@ -64,7 +64,7 @@ class User extends Authenticatable
 
     public function qualifications(): BelongsToMany
     {
-        return $this->belongsToMany(Qualification::class, 'employee_qualification', 'employee_id', 'qualification_id')->withTimestamps();
+        return $this->belongsToMany(Qualification::class, 'employee_qualification', 'employee_id', 'qualification_id')->withPivot('credential_document_id')->withTimestamps();
     }
 
     #[Scope]

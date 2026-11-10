@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\CredentialDocumentController;
+use App\Http\Controllers\CredentialDownloadController;
+use App\Http\Controllers\CredentialReviewController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\JobRequirementController;
@@ -57,4 +60,16 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:enroll-training')->name('training-enrollments.store');
     Route::patch('/training-enrollments/{enrollment}/completion', [TrainingCompletionController::class, 'update'])
         ->middleware('can:complete-training')->name('training-completions.update');
+
+    Route::middleware(['assigned', 'can:submit-credentials'])->group(function () {
+        Route::get('/credentials/create', [CredentialDocumentController::class, 'create'])->name('credentials.create');
+        Route::post('/credentials', [CredentialDocumentController::class, 'store'])->name('credentials.store');
+    });
+    Route::middleware(['assigned', 'can:view-credentials'])->group(function () {
+        Route::get('/credentials', [CredentialDocumentController::class, 'index'])->name('credentials.index');
+        Route::get('/credentials/{document}', [CredentialDocumentController::class, 'show'])->whereNumber('document')->name('credentials.show');
+        Route::get('/credentials/{document}/download', CredentialDownloadController::class)->whereNumber('document')->name('credentials.download');
+    });
+    Route::post('/credentials/{document}/reviews', [CredentialReviewController::class, 'store'])
+        ->middleware('can:review-credentials')->name('credentials.reviews.store');
 });

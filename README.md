@@ -1,6 +1,6 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Credentials, compliance calculations, audits, alerts, reports, and the auditor API remain planned.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Employee-wide compliance calculations, audits, alerts, reports, and the auditor API remain planned.
 
 ## Available now
 
@@ -11,7 +11,8 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Admin/Officer maintenance of mandatory job qualifications, grouped by safety domain.
 - Employee directory and requirement pages limited to the viewer's facility, region, or own record.
 - Draft/published/archived courses, Staff self-enrollment, Officer-recorded completion, and scoped training progress.
-- Private local storage configuration with automatic file serving disabled; uploads/downloads arrive later.
+- Private PDF/JPEG/PNG submissions, protected attachment downloads, append-only submission/review events, and officer review.
+- Current qualifying-evidence selection preserves older valid approvals while renewals are pending or rejected.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -74,7 +75,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **105 tests and 702 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog and training migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **142 tests and 963 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -85,7 +86,7 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 3. Register a Staff account and assign its facility/job as Admin. Open **Employees** to inspect its inherited requirements. Requirements do not award a qualification or indicate eligibility.
 4. Sign in with facility manager/regional director accounts assigned through **Accounts**. They see only employees in their facility/region. A changed employee ID outside that scope returns 404. Staff see only themselves; unassigned Staff remain on onboarding.
 5. Try deactivating an assigned facility/job or a required qualification. Validation explains the dependency to resolve. A facility cannot move regions while accounts are assigned. Records are retained and may be reactivated; there are no delete actions.
-6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Uploads, compliance percentages, and the API remain future milestones.
+6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Employee-wide compliance percentages and the API remain future milestones.
 
 
 ## Training walkthrough
@@ -93,8 +94,20 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 1. As Admin or Compliance Officer, open **Courses** and add a draft course mapped to a training-required qualification. Publish it when ready for enrollment. The demo seeder includes two published offerings and does not republish archived ones.
 2. As assigned Staff, browse the published catalog and enroll. Refresh or submit again: the same employee/course enrollment is retained. Staff cannot enroll other accounts or record completion.
 3. As Compliance Officer, open **Training progress**, record a completion date and optional feedback. The date must fall between the enrollment date and today in Asia/Manila. Admin manages courses but cannot record completion; officers cannot complete their own old enrollments.
-4. View Staff progress again. It shows the officer, completion date, and feedback, without awarding a qualification. Approved, valid evidence is still required in the later credential workflow.
+4. View Staff progress again. It shows the officer, completion date, and feedback, without awarding a qualification. Approved, valid evidence is also required through the credential submission/review workflow.
 5. Archive the course. Enrollment/completion history stays visible to the employee and scoped managers/directors. The qualification mapping is locked after the first enrollment, and recorded completions cannot be overwritten. Create a new offering for renewals.
+
+## Credential walkthrough
+
+1. As assigned Staff, open **Credentials**, choose an active qualification, enter its issue/expiry dates, and upload a small synthetic PDF, JPEG, or PNG. Expiring qualifications require expiry; non-expiring ones may omit it. Issue dates cannot be in the future, and expiry cannot precede issue.
+2. For a training-required qualification, select your own matching enrollment. Evidence may be submitted while training is pending, but approval requires completed training. Other qualifications must not include an enrollment link.
+3. As Officer, filter **Credentials** to Pending, open a submission, download its evidence, and approve or reject. Rejection requires feedback. Admin may inspect/download evidence but cannot review; managers/directors cannot access raw files or private review details. Self-review and repeated decisions are blocked.
+4. Submit a renewal as Staff. Each upload gets a new private filename, opaque reference, and history. Earlier documents are preserved. A pending/rejected/expired renewal cannot hide an older still-valid approval. Approval and date validity are separate; expiry includes the full calendar day in Asia/Manila.
+5. If a file is unavailable, the page explains the problem and the download returns 404. Missing files cannot receive new approval. Restore from a trusted backup or submit a new copy; there are no document-edit/delete actions.
+
+`CREDENTIAL_MAX_UPLOAD_KIB` controls the limit (default 10240 KiB / 10 MiB). PHP's web `upload_max_filesize` and `post_max_size` must also permit the chosen limit. Never create a public link to `storage/app/private`. Downloads use authorized application routes, generated attachment names, no-store caching, and nosniff/sandbox headers. Filename extensions alone do not establish file content. No antivirus/PDF parser service is included; validation checks content-based MIME and readable JPEG/PNG image structure.
+
+The current effective-evidence link is refreshed after review. Views calculate validity using the selection action at read time, rather than trusting a cached link after expiry. Employee-wide eligibility, percentage calculations, and assessment history are the next milestone.
 
 ## Documentation and next milestones
 

@@ -29,6 +29,7 @@
                     <a href="{{ route('training-courses.index') }}">Courses</a>
                     <a href="{{ route('training-enrollments.index') }}">Training progress</a>
                 @endcan
+                @can('view-credentials')<a href="{{ route('credentials.index') }}">Credentials</a>@endcan
                 <a href="{{ route('profile') }}">Profile</a>
                 <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="cursor-pointer text-teal-300">Sign out</button></form>
             @else

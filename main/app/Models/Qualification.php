@@ -28,7 +28,7 @@ class Qualification extends Model
 
     public function employees(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'employee_qualification', 'qualification_id', 'employee_id')->withTimestamps();
+        return $this->belongsToMany(User::class, 'employee_qualification', 'qualification_id', 'employee_id')->withPivot('credential_document_id')->withTimestamps();
     }
 
     #[Scope]
