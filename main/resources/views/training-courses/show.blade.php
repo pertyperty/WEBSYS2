@@ -11,7 +11,7 @@
     </div>
     <section class="panel space-y-5">
         <p class="whitespace-pre-line text-sm text-slate-700">{{ $course->description ?? 'No additional description.' }}</p>
-        <p class="text-sm text-slate-600">Enrollment and completion do not grant compliance. Training-required qualifications also need approved, valid evidence.</p>
+        <p class="text-sm text-slate-600">After training, submit evidence for approval to meet this qualification.</p>
         @if($ownEnrollment)
             <p class="font-semibold">Your status: {{ ucfirst($ownEnrollment->status->value) }}</p>
             <a href="{{ route('training-enrollments.index') }}" class="text-sm font-semibold text-teal-800 underline">View training progress</a>

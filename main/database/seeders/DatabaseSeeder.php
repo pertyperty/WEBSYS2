@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\JobRole;
-use App\Models\Region;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -16,8 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $region = Region::firstOrCreate(['name' => 'Demo Region']);
-        $region->facilities()->firstOrCreate(['name' => 'Demo Logistics Hub']);
+        $this->call(PhilippineOrganizationSeeder::class);
         JobRole::firstOrCreate(['name' => 'Driver']);
         JobRole::firstOrCreate(['name' => 'Warehouse Staff']);
         $this->call([SafetyDomainSeeder::class, QualificationSeeder::class, TrainingCourseSeeder::class]);

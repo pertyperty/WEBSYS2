@@ -1,7 +1,7 @@
 <x-layout title="Job requirements">
     <a href="{{ route('job-roles.index') }}" class="text-sm font-semibold text-teal-800 underline">Back to jobs</a>
     <h1 class="mt-4 text-3xl font-bold">{{ $jobRole->name }} requirements</h1>
-    <p class="mb-8 mt-3 max-w-3xl text-sm text-slate-600">Select every mandatory qualification for this job. Staff inherit these requirements through their assigned job. An empty selection means not assessable when compliance assessment is implemented.</p>
+    <p class="mb-8 mt-3 max-w-3xl text-sm text-slate-600">Select the qualifications everyone in this job must hold. With no requirements selected, readiness cannot be assessed.</p>
     @if(! $jobRole->is_active)
         <p class="mb-5 text-sm font-semibold text-amber-800">This job is inactive. You may clear its requirements; reactivate the job before adding requirements.</p>
     @endif

@@ -6,15 +6,16 @@
         </div>
         <a href="{{ route('training-courses.index') }}" class="button">Browse courses</a>
     </div>
-    <p class="mb-6 text-sm text-slate-600">Completion records training only. Approved, valid evidence is also required for compliance.</p>
-    <div class="space-y-5">
+
+    <div class="record-list">
         @forelse($enrollments as $enrollment)
-            <section class="panel space-y-4">
+            <section class="record-row space-y-4">
                 <div>
                     <h2 class="font-semibold">{{ $enrollment->trainingCourse->title }}</h2>
                     <p class="mt-1 text-sm text-slate-600">{{ $enrollment->employee->name }} / {{ $enrollment->employee->facility?->name ?? 'No current facility' }} / {{ $enrollment->trainingCourse->qualification->name }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ ucfirst($enrollment->status->value) }} / Enrolled {{ $enrollment->enrolled_at->timezone('Asia/Manila')->format('M j, Y') }}</p>
+                    <p class="mt-1 text-xs text-slate-500">Enrolled {{ $enrollment->enrolled_at->timezone('Asia/Manila')->format('M j, Y') }}</p>
                 </div>
+                <x-status-badge :status="$enrollment->status->value" />
                 @if($enrollment->completed_at)
                     <p class="text-sm">Completed {{ $enrollment->completed_at->format('M j, Y') }} / Recorded by {{ $enrollment->completedBy?->name }}</p>
                     @if($enrollment->feedback)
@@ -23,6 +24,8 @@
                 @else
                     @can('complete-training')
                         @if($enrollment->employee_id !== auth()->id())
+                            <details class="pt-1">
+                                <summary class="text-link cursor-pointer">Record completion</summary>
                             <form method="POST" action="{{ route('training-completions.update', $enrollment) }}" class="grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
                                 @csrf
                                 @method('PATCH')
@@ -36,6 +39,7 @@
                                 </div>
                                 <div><button type="submit" class="button">Record completion</button></div>
                             </form>
+                            </details>
                         @endif
                     @endcan
                 @endif

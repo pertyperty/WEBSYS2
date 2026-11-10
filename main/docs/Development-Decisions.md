@@ -60,3 +60,26 @@ The code must be explainable during the defense: use focused resource controller
 
 
 Compliance uses one evidence predicate and a read-only employee assessment action. Eligibility compares exact required/satisfied counts; the display percentage is rounded. Inactive employees or incomplete/inactive requirement configuration are not assessable, with null percentages. History is recorded separately for material changes and reconciled daily at 00:05 Asia/Manila; aggregate dashboards calculate live state without writing a snapshot for every employee. Other catalog edits reconcile history on scoped detail/history reads or the scheduled run. No additional service, queue worker, or dependency was added for this milestone.
+
+
+## Product experience requirements
+
+The owner confirmed on 2026-11-11 that CheckPoint must be designed as deployable software with a user-first interface. Milestone completion includes practical navigation and interaction quality, not only backend correctness.
+
+- Organize navigation by work: overview, people/readiness, documents, training, and administration. Keep configuration out of the main task flow. Show only routes the role can use and clearly indicate the current page.
+- Keep the primary task visible. Use short headings, plain language, one clear primary action, meaningful empty states, and expandable secondary explanations. Avoid repeating the same qualification information in several boxes.
+- Give every form control an associated visible label. Use inline errors and an error summary. Role changes must reveal applicable assignments and disable/clear irrelevant values. Evidence selection must show matching enrollments and set expiry requirements. Server validation and scope remain authoritative.
+- Use whitespace and typography for structure, with restrained surfaces and separators. Status colors must also have text labels. Controls need visible focus, touch-friendly targets, and keyboard operation.
+- Check narrow mobile widths and desktop layouts. Mobile navigation uses a native modal dialog so focus and Escape work without an extra dependency. Tables can scroll within labeled, keyboard-focusable regions without making the whole page overflow.
+- Use product language in the interface: no classroom/demo notices, implementation milestones, generic add-record labels, or meaningless selectable entries. A disabled selection prompt is guidance, not a fake option. Unconfigured organization records are an actual setup task.
+- For significant future UI changes, inspect publicly available comparable products, including their product screenshots or guided interfaces. Compare user journeys, navigation, status presentation, and mobile behavior with CheckPoint. Record sources, observations, and differences; do not infer unobserved workflows or claim a screenshot proves authorization/security.
+- A polished interface does not complete deployment preparation. Configure the actual organization, production mail delivery, HTTPS, production environment/secrets, and operational checks before launch. Local log mail remains a development setting and is documented outside product screens.
+
+Reference interfaces inspected for the redesign: [SafetyCulture's public training tour](https://safetyculture.navattic.com/uw250w9u), reached from [its training page](https://mitti.com/training), and [Moodle's public course catalog](https://school.moodledemo.net/course/index.php). The SafetyCulture tour exposes grouped sidebar navigation, task-level course tabs, a primary action, and concise published-state indicators. Moodle's public catalog combines a labeled search with expandable categories. These observations informed CheckPoint's grouped navigation, collapsible administration, labeled search, and compact statuses; they do not imply matching every feature or backend behavior.
+
+
+## Philippine organization data
+
+The owner requested Philippine regions and fictional hubs based on real logistics locations. `PhilippineOrganizationSeeder` uses the 18 region names published in the [PSA Philippine Standard Geographic Code region directory](https://psa.gov.ph/classification/psgc/regions), accessed 2026-11-11, including the Negros Island Region. Geographic names are attributed to the Philippine Statistics Authority (CC BY 4.0). The hubs are invented names based on regional distribution locations such as Manila, Clark, Calamba, Mandaue, Iloilo, Davao, and Cagayan de Oro; they are not claims about existing operators or affiliations.
+
+The repeatable seeder adds one hub per region and preserves existing active/inactive settings. It renames the exact legacy starter region and hub in place to NCR and Manila Gateway Distribution Hub, preserving IDs and all assignment/evidence links. Historical assessment snapshots keep their original recorded context. If a canonical name already exists alongside the legacy record, seeding stops transactionally rather than deleting or silently reassigning records. New organization-specific configuration remains editable by Admin.

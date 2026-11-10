@@ -219,6 +219,22 @@ Defense questions to practice:
 
 `ComplianceAssessmentTest` covers evidence precedence, required-only counts, training ownership/linkage, future dates, inactive configuration, null percentages, midnight/day-30/day-31 boundaries, stale award pointers, and eager-load query behavior. `ComplianceHistoryTest` covers deduplication, state returns, retained snapshots, workflow hooks, transfers, and date reconciliation. `ComplianceDashboardTest` covers denominators, scope, N/A cells, escaped names, access rejection, and private-data exclusion. Tests run only against `checkpoint_test`.
 
+## Interface redesign and product quality
+
+The product shell uses grouped role-aware navigation, an account menu, a mobile native-dialog drawer, and shared status/empty-state components. Status colors always include text. Forms keep visible labels, and shared inputs associate validation feedback with controls. Lists use one surface with subtle row separators instead of one bordered card per record. Secondary rules and references are disclosed on demand.
+
+`resources/js/forms.js` contains two small Alpine data factories. `assignmentForm` reveals and requires the applicable facility/job/region fields and clears values that no longer apply. Staff can deliberately remain awaiting assignment; managers require one facility; directors/auditors require a region; global roles have neither. `evidenceForm` narrows enrollments to the selected qualification and changes training/expiry requirements. The server's existing Form Requests still validate every submitted combination. Browser state cannot grant permissions or approve evidence.
+
+The Staff overview leads to the employee's own readiness and next steps. Readiness details combine each requirement's status, training progress, and next action in a single list. Managers and officers retain scoped summaries and task links. Account and employee search validate length and retain the existing query scope; pagination preserves search input. A selection prompt has no data value and is disabled, while every real option describes a domain choice.
+
+The [product experience requirements and reference comparison](Development-Decisions.md#product-experience-requirements) are ongoing acceptance criteria. The current public references are guided/sample interfaces; only observed interface patterns are claimed. Deployment still needs real organization configuration and a working mail transport. No deployment or production-readiness claim follows from this UI work alone.
+
+Run `node --test tests/forms.test.js` for dependent-selection transitions and PHPUnit's `InterfaceWorkflowTest` for scoped search, Staff next-step routing, and label coverage across current forms. Use the browser to verify dynamic rendering, dialog keyboard/focus behavior, and mobile overflow, which server-side tests alone cannot establish.
+
+Browser review on 2026-11-11 covered the authenticated Admin overview, mobile navigation, and account role transitions. At 390px, the overview/account/matrix pages did not overflow horizontally. The navigation dialog focused its close control, locked background scrolling, and returned focus to the opener after Escape. Client-only role switches correctly enabled/required facility for managers and region for directors, and disabled/cleared scope fields for global roles; no account changes were saved during these checks. Additional checks covered the course catalog at desktop/390px and the qualification matrix at 320px, with no page-level horizontal overflow. Account options contained 18 regions and 18 hubs without legacy starter names. The reference tour and CheckPoint screenshots were captured for visual comparison. These manual checks used the signed-in Admin session; they do not claim a separate manual Staff/Officer session.
+
+The organization seeder now includes all 18 Philippine regions and fictional hubs in regional logistics locations. It renames only the exact legacy stock names, preserves primary keys and inactive settings, and refuses ambiguous name collisions without partial writes. The existing assessment snapshots are not rewritten. See the [source and data policy](Development-Decisions.md#philippine-organization-data).
+
 ## Definition of done
 
 A workflow is complete when its persistence, validation, policy, UI/API, error states, focused tests, usable seed data, and documentation are present. Run relevant tests and formatter/build checks; before handover run the full suite. Report actual results and limitations. Never run tests or destructive seed/reset commands against a populated development database.
@@ -234,6 +250,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 | 2026-11-10 | Implemented training courses/enrollment, officer completion, scoped progress, and training defense walkthrough | 105 tests/702 assertions on MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 | 2026-11-10 | Implemented private credentials, immutable review events, current-evidence selection, and defense walkthrough | 142 tests/963 assertions on MySQL; additive migration; upload/privacy/failure-path coverage; Pint, Composer validation, Blade and Vite checks |
 | 2026-11-10 | Implemented live compliance, scoped dashboards/matrix, material snapshots, and daily history reconciliation | 169 tests/1,142 assertions on isolated MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
+| 2026-11-11 | Reworked task navigation, responsive layout, dependent forms, accessible labels/statuses, and Philippine organization data; recorded product/reference standards | 178 tests/1,261 assertions on isolated MySQL; six Node interaction tests; desktop/mobile Admin browser checks; Pint, Composer, Blade, Vite, and documentation checks |
 
 ## Risks and responses
 

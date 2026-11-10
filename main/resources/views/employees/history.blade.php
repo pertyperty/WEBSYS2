@@ -1,11 +1,11 @@
 <x-layout title="Compliance history">
     <a href="{{ route('employees.show', $employee) }}" class="text-sm font-semibold text-teal-800 underline">Back to employee</a>
     <h1 class="mt-4 text-3xl font-bold">Compliance history: {{ $employee->name }}</h1>
-    <p class="mt-3 text-sm text-slate-600">Material assessment snapshots, newest first. Assignment names and requirements are preserved as assessed. Unchanged reads do not append history. Current employee scope controls access.</p>
+    <p class="mt-3 text-sm text-slate-600">See how readiness has changed over time. Most recent changes appear first.</p>
     <div class="mt-8 space-y-5">
         @foreach($history as $entry)
             <section class="panel">
-                <h2 class="font-semibold">{{ $entry->status->label() }} / {{ $entry->assessed_on->toDateString() }} (Asia/Manila)</h2>
+                <div class="flex flex-wrap items-center gap-3"><x-status-badge :status="$entry->status->value" /><h2 class="text-sm font-medium text-slate-500">{{ $entry->assessed_on->format('M j, Y') }}</h2></div>
                 <p class="mt-2 text-sm">{{ $entry->satisfied_count }} / {{ $entry->required_count }} required qualifications satisfied; {{ $entry->percentage === null ? 'No percentage: not assessable' : $entry->percentage.'%' }}.</p>
                 <p class="mt-2 text-sm text-slate-600">{{ $entry->snapshot['facility_name'] ?? 'No facility' }} / {{ $entry->snapshot['job_role_name'] ?? 'No job' }}. Source: {{ str_replace('_', ' ', $entry->source) }}. Recorded by {{ $entry->actor?->name ?? 'System' }} at {{ $entry->created_at->timezone('Asia/Manila')->format('Y-m-d H:i:s') }}.</p>
                 @if($entry->snapshot['reason'])<p class="mt-2 text-sm text-amber-800">{{ $entry->snapshot['reason'] }}</p>@endif
