@@ -17,6 +17,19 @@
             @auth
                 <a href="{{ route('dashboard') }}">Dashboard</a>
                 @can('manage-users')<a href="{{ route('admin.users') }}">Accounts</a>@endcan
+                @can('manage-organization')
+                    <a href="{{ route('regions.index') }}">Regions</a>
+                    <a href="{{ route('facilities.index') }}">Facilities</a>
+                    <a href="{{ route('safety-domains.index') }}">Safety domains</a>
+                    <a href="{{ route('qualifications.index') }}">Qualifications</a>
+                @endcan
+                @can('manage-requirements')<a href="{{ route('job-roles.index') }}">Jobs & requirements</a>@endcan
+                @can('view-employees')<a href="{{ route('employees.index') }}">Employees</a><a href="{{ route('qualification-matrix') }}">Matrix</a>@endcan
+                @can('view-training')
+                    <a href="{{ route('training-courses.index') }}">Courses</a>
+                    <a href="{{ route('training-enrollments.index') }}">Training progress</a>
+                @endcan
+                @can('view-credentials')<a href="{{ route('credentials.index') }}">Credentials</a>@endcan
                 <a href="{{ route('profile') }}">Profile</a>
                 <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="cursor-pointer text-teal-300">Sign out</button></form>
             @else

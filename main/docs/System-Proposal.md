@@ -2,7 +2,7 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics across multiple regions and facilities. It replaces scattered attachments and spreadsheets with private evidence storage, training and qualification tracking, scoped compliance reporting, and controlled auditor verification.
 
-This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). The authentication/onboarding foundation is implemented; the remaining domain modules below describe planned behavior.
+This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, reports, and the API below remain planned.
 
 ## Architecture and boundaries
 

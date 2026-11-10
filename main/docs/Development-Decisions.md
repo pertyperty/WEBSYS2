@@ -54,4 +54,9 @@ One coding agent working with the team is sufficient. Repository reading/editing
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-The owner authorized development and asked to learn the API as it is implemented. The foundation is implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+The owner authorized development and asked to learn the API as it is implemented. The foundation, organization/qualification, training, private credential, and compliance/dashboard/history milestones are implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+
+The code must be explainable during the defense: use focused resource controllers, Form Requests, explicit relationships and Gates, and one reusable employee visibility scope. The code walkthrough and demonstration questions are maintained in [Implementation](Implementation.md#code-walkthrough-for-the-defense).
+
+
+Compliance uses one evidence predicate and a read-only employee assessment action. Eligibility compares exact required/satisfied counts; the display percentage is rounded. Inactive employees or incomplete/inactive requirement configuration are not assessable, with null percentages. History is recorded separately for material changes and reconciled daily at 00:05 Asia/Manila; aggregate dashboards calculate live state without writing a snapshot for every employee. Other catalog edits reconcile history on scoped detail/history reads or the scheduled run. No additional service, queue worker, or dependency was added for this milestone.

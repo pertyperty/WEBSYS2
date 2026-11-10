@@ -16,6 +16,10 @@ Browser form requests include a CSRF token. The later auditor API uses a bearer 
 
 During qualification and credential milestones, learn how models, foreign keys, review decisions, and expiry rules produce a verification result. We will test those rules first. An API must use the same assessment logic as the browser; it should not become a second implementation of compliance.
 
+The training milestone illustrates the same boundary: a session identifies the officer, the completion Gate permits the action, validation checks the date, and a transaction protects the enrollment state. Completing training alone does not produce a compliance result. The later auditor API must verify evidence as well as matching completed training.
+
+The credential milestone now generates an opaque reference per submission and uses SelectEffectiveCredential for current evidence selection. A pending renewal leaves an older valid approval available. The later API must apply its own auditor token/region checks and explicitly choose safe response fields; private document pages/downloads do not authorize auditors. For a reference-specific verification, evaluate that submission itself; do not substitute the selected employee-level evidence or require that reference to be the newest selected record. The API route is still not implemented.
+
 A verification reference identifies a particular evidence submission. It is not a password and is not sufficient to authorize access. It does not mean that all of the employee's other requirements are satisfied.
 
 ## 3 Build one JSON route in the API milestone

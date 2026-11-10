@@ -20,9 +20,9 @@ class UpdateUserAssignmentRequest extends FormRequest
         return [
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['required', 'boolean'],
-            'facility_id' => ['nullable', 'integer', 'exists:facilities,id'],
-            'job_role_id' => ['nullable', 'integer', 'exists:job_roles,id'],
-            'region_id' => ['nullable', 'integer', 'exists:regions,id'],
+            'facility_id' => ['nullable', 'integer', Rule::exists('facilities', 'id')->where('is_active', true)],
+            'job_role_id' => ['nullable', 'integer', Rule::exists('job_roles', 'id')->where('is_active', true)],
+            'region_id' => ['nullable', 'integer', Rule::exists('regions', 'id')->where('is_active', true)],
         ];
     }
 

@@ -1,6 +1,6 @@
 <x-layout title="Account assignments">
     <h1 class="text-3xl font-bold">Account assignments</h1>
-    <p class="mb-8 mt-3 max-w-3xl text-sm text-slate-600">Assign staff a facility and job together. Managers need a facility; directors and API auditors need a region. Global roles need no assignment. Organization CRUD arrives in milestone 1; the foundation seeder provides demonstration choices.</p>
+    <p class="mb-8 mt-3 max-w-3xl text-sm text-slate-600">Assign staff a facility and job together. Managers need a facility; directors and API auditors need a region. Global roles need no assignment. Manage organization records from the navigation. Only active regions, facilities, and jobs can receive assignments.</p>
     <div class="space-y-5">
         @foreach($users as $account)
         <section class="panel" x-data="{ expanded: false }">
