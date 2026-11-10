@@ -136,3 +136,10 @@ Before relying on a package's API, confirm its installed version:
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+
+## Product experience
+
+- Treat CheckPoint as user-first software intended for deployment. Usability, accessibility, responsive behavior, and understandable code are acceptance criteria alongside authorization and tests.
+- Before changing interfaces, read [main/docs/Development-Decisions.md](main/docs/Development-Decisions.md#product-experience-requirements). Use task-focused navigation, visible field labels, dependent selections, short copy, and status colors paired with text. Keep demo/implementation language out of product screens.
+- For substantial UI changes, inspect comparable publicly available product interfaces and screenshots/tours. Compare observed workflows and desktop/mobile behavior, record sources and limitations, and report access/tool obstacles. Do not claim browser checks or comparisons that were not performed.

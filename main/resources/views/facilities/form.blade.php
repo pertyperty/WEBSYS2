@@ -1,6 +1,6 @@
 <x-layout title="Edit Facilities">
     <a href="{{ route('facilities.index') }}" class="text-sm font-semibold text-teal-800 underline">Back to Facilities</a>
-    <h1 class="mb-6 mt-4 text-3xl font-bold">{{ $facility->exists ? 'Edit record' : 'Add record' }}</h1>
+    <h1 class="mb-6 mt-4 text-3xl font-bold">{{ $facility->exists ? 'Edit facility' : 'Add facility' }}</h1>
     <form method="POST" action="{{ $facility->exists ? route('facilities.update', $facility) : route('facilities.store') }}" class="panel max-w-2xl space-y-5">
         @csrf
         @if($facility->exists)
@@ -13,7 +13,7 @@
         <div>
             <label for="region_id" class="text-sm font-medium">Region</label>
             <select id="region_id" name="region_id" class="field" required>
-                <option value="">Select an active parent</option>
+                <option value="" disabled>Select a region</option>
                 @foreach($regions as $region)
                     <option value="{{ $region->id }}" @selected(old('region_id', $facility->region_id) == $region->id)>{{ $region->name }}</option>
                 @endforeach
@@ -26,7 +26,8 @@
                 <option value="0" @selected(! old('is_active', $facility->is_active))>Inactive</option>
             </select>
         </div>
-        <p class="text-sm text-slate-600">Deactivation keeps the record. Resolve dependent assignments or requirements first.</p>
-        <button type="submit" class="button">Save record</button>
+        <p class="field-help">Inactive records stay in history. Remove active dependencies before deactivating.</p>
+        <button type="submit" class="button">Save facility</button>
+        <a href="{{ route('facilities.index') }}" class="button-secondary">Cancel</a>
     </form>
 </x-layout>

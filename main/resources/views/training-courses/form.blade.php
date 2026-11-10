@@ -31,8 +31,9 @@
                     <option value="{{ $status->value }}" @selected(old('status', $course->status->value) === $status->value)>{{ ucfirst($status->value) }}</option>
                 @endforeach
             </select>
-            <p class="mt-2 text-xs text-slate-500">Draft courses do not accept enrollment. Archive finished offerings and create a new offering for renewals. Archived offerings stay archived.</p>
+            <p class="mt-2 text-xs text-slate-500">Only published courses accept enrollment. Archived courses remain in history.</p>
         </div>
         <button type="submit" class="button">Save course</button>
+        <a href="{{ route('training-courses.index') }}" class="button-secondary">Cancel</a>
     </form>
 </x-layout>

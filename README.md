@@ -47,7 +47,7 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates a demo region/hub, two jobs, two safety domains, and two training-required qualifications linked to the demo jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
+The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates all 18 Philippine regions, one fictional hub per region based on real logistics locations, two jobs, two safety domains, two training-required qualifications linked to those jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
@@ -57,7 +57,7 @@ The default local disk is `storage/app/private`. Do not expose it through a publ
 
 1. Sign in as the administrator created by the command above.
 2. In another browser session, register a staff account. It must land on **Awaiting your assignment**, with profile access but no employee features.
-3. As Admin, open **Accounts**, expand that account, keep the Staff role, and assign the demo facility and a job together.
+3. As Admin, open **Accounts**, expand that account, keep the Staff role, and assign a facility and a job together.
 4. Refresh the staff dashboard. It shows its assignment and live compliance totals. With required evidence missing, the employee is not eligible; a job with no requirements is not assessable.
 5. Try a password reset and profile/password change. Staff must not be able to open `/admin/users` or assign their own role.
 
@@ -110,6 +110,16 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 `CREDENTIAL_MAX_UPLOAD_KIB` controls the limit (default 10240 KiB / 10 MiB). PHP's web `upload_max_filesize` and `post_max_size` must also permit the chosen limit. Never create a public link to `storage/app/private`. Downloads use authorized application routes, generated attachment names, no-store caching, and nosniff/sandbox headers. Filename extensions alone do not establish file content. No antivirus/PDF parser service is included; validation checks content-based MIME and readable JPEG/PNG image structure.
 
 The current effective-evidence link is refreshed after review. Views calculate validity using the selection action at read time, rather than trusting a cached link after expiry. Employee-wide eligibility, percentage calculations, and assessment history reuse the same validity predicate; they never trust the cached link after expiry.
+
+## Product interface
+
+The workspace now groups readiness, documents, and training separately from administration. Staff get their own readiness and next steps; other roles get scoped workforce totals. Account and evidence forms adapt to selections. Fields have visible labels, statuses use both color and text, and the mobile navigation opens as a keyboard-accessible dialog. Secondary explanations are expandable.
+
+The [product requirements and reference observations](main/docs/Development-Decisions.md#product-experience-requirements) govern future milestones. Product screens use operational language; development and deployment instructions belong in these documents. Before production use, configure real organization records and mail delivery as well as the environment and infrastructure.
+
+To replace the legacy starter locations in an existing database without resetting it, run `php artisan db:seed --class=PhilippineOrganizationSeeder` from `main/`. This preserves the existing IDs and assignments and adds missing regions/hubs. Hub names are fictional; [data sources and preservation rules](main/docs/Development-Decisions.md#philippine-organization-data) are documented. Review your actual organization configuration before deployment.
+
+Frontend interaction checks run from `main/` with `node --test tests/forms.test.js`, without additional dependencies. The CI workflow includes them.
 
 ## Compliance walkthrough
 

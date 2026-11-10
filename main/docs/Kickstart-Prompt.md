@@ -7,6 +7,11 @@ Act as our co-developer for CheckPoint, a Regional Safety Compliance Management 
 
 Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, main/docs/Implementation.md, and main/docs/API-Learning-Path.md. Preserve unrelated changes and existing documentation. The Laravel 13.40/Fortify 1.41 foundation already exists under `main/`. Check implemented code and remaining setup rather than scaffolding again. Authentication, organization/requirements, training, private credentials/reviews, and live compliance with scoped dashboards/matrix/history exist. Continue milestone 5 (notifications, audits, CSV reports) after checking the progress record. Reuse AssessEmployeeCompliance and SelectEffectiveCredential; preserve RecordComplianceAssessment snapshots. The original Word proposal is the business source.
 
+Product experience is a release requirement:
+- Treat CheckPoint as deployable software. Use production-facing language, short task-first pages, labeled fields, dependent selections, meaningful status colors with text, and mobile/keyboard-friendly navigation. Keep technical explanations in documentation or secondary disclosures.
+- Before significant interface changes, inspect publicly available comparable products and product screenshots/tours. Compare actual observed journeys and interfaces with CheckPoint, record sources and limitations, and verify the resulting desktop/mobile workflows. Do not claim screenshot comparisons or browser checks that were not performed.
+- Keep these requirements visible alongside authorization, tests, and defense readability. Avoid adding the next milestone until material usability regressions are addressed.
+
 Agreed stack and services:
 - One Laravel application under `main/` (run Composer, npm, and Artisan there); Blade, Tailwind, and Alpine.js for small interactions. No separate SPA, microservices, or generic repository abstraction.
 - MySQL, matching the proposal. Do not substitute PostgreSQL even though it is installed.

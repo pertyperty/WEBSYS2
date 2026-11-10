@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\RecordComplianceAssessment;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -11,9 +12,12 @@ class EmployeeController extends Controller
 {
     public function index(Request $request): View
     {
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+
         return view('employees.index', [
             'employees' => User::visibleTo($request->user())->with(['facility.region', 'jobRole'])
-                ->orderBy('name')->orderBy('id')->paginate(15),
+                ->when($filters['search'] ?? null, fn (Builder $query, string $search): Builder => $query->where('name', 'like', '%'.$search.'%'))
+                ->orderBy('name')->orderBy('id')->paginate(15)->withQueryString(),
         ]);
     }
 

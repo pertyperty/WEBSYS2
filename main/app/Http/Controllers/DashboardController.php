@@ -25,6 +25,7 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'assessedOn' => $asOf->toDateString(),
+            'ownAssessment' => $assessments->firstWhere('employee_id', $request->user()->id),
             'totals' => [
                 'employees' => $employees->count(), 'assessable' => $assessable->count(), 'eligible' => $eligible,
                 'not_eligible' => $assessable->count() - $eligible,
