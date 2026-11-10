@@ -35,8 +35,8 @@ The owner will provide deadline and team experience later. No instructor-require
 |---|---|---|
 | PHP and Composer | Laravel runtime and dependencies | Available: PHP 8.4.27 and Composer 2.10.3. PHP includes `pdo_mysql`, `fileinfo`, and required common extensions. Recheck requirements against the chosen framework release. |
 | Laravel installer | Scaffold the application | Available: installer 5.32.0. This is not the application's Laravel framework version. Select a supported compatible framework release when development starts and commit lockfiles. |
-| Herd | Serve the local application | User reports it installed. Link the eventual project root and verify the local domain and HTTPS configuration. |
-| MySQL | Application and test persistence | Existing `MySQL80` service remains stopped; the agent's start attempt was denied. Binaries are installed under `C:/Program Files/MySQL/MySQL Server 8.0/bin` (8.0.46), but the client is not on PATH. Main database credentials were unavailable. Foundation tests passed on a separate disposable instance bound to 127.0.0.1:3307, stopped afterward. Configure the main service and separate development/test accounts before the Herd walkthrough. |
+| Herd | Serve the local application | Desktop app is running; repository linked at `http://websys2.test`. Login returned HTTP 200 on 2026-11-10. |
+| MySQL | Application and test persistence | Existing `MySQL80` is running on 127.0.0.1:3306. Dedicated local application/test accounts connect to `checkpoint` and `checkpoint_test` respectively; credentials remain in ignored environment files. Development migrations/seeding and 22 tests / 141 assertions passed on 2026-11-10. The earlier temporary instance on port 3307 remains stopped. |
 | Node and npm | Vite and frontend asset builds | Node 22.20.0 is available. Check package engine requirements and npm before scaffolding. |
 | Private Laravel filesystem | Credential storage | Local private disk is sufficient; no object-storage service is required. Never expose credentials through `public/storage`. |
 | Laravel scheduler | Daily expiry alerts | Run `php artisan schedule:work` during local demonstrations; document that alerts do not run while the process is stopped. |
@@ -54,4 +54,4 @@ One coding agent working with the team is sufficient. Repository reading/editing
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-The owner authorized development and asked to learn the API as it is implemented. The foundation is implemented and tested; the main local service setup remains pending. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+The owner authorized development and asked to learn the API as it is implemented. The foundation is implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.

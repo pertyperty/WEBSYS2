@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Stage:** foundation implemented; main local Herd/MySQL setup pending.
+**Stage:** foundation implemented and verified against local Herd/MySQL; administrator walkthrough pending.
 **Last updated:** 2026-11-10.
 **Application status:** Laravel 13.40/Fortify 1.41 authentication, unassigned-staff onboarding, administrator assignment, minimal organization records, private-storage configuration, and tests are implemented. Full domain modules are not implemented.
 
@@ -16,12 +16,12 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 - [x] Inspect the current repository and preserve `main/docs/`; scaffold Laravel at the repository root without overwriting existing content.
 - [x] Record supported framework/PHP/Node/MySQL versions and lock dependencies. Choose compatible session authentication with Blade; do not assume a legacy starter works with the chosen release.
-- [ ] Verify/start the existing MySQL service as appropriate; configure dedicated development/test databases and placeholder-only `.env.example`.
-- [x] Establish Vite scripts, private storage, mail log, PHPUnit, and Pint. Herd's actual local domain still needs confirmation.
+- [x] Verify/start the existing MySQL service as appropriate; configure dedicated development/test databases and placeholder-only `.env.example`.
+- [x] Establish Vite scripts, private storage, mail log, PHPUnit, and Pint. Herd serves the repository at `http://websys2.test` (login HTTP 200 verified).
 - [x] Deliver registration, login/logout, password reset, profile, base layout, and awaiting-assignment screen. Only Admin controls role/job/facility assignment.
 - [x] Document exact fresh setup commands and verify frontend build, formatting, and authentication tests against the test database.
 
-**Verification:** 22 tests / 141 assertions passed on disposable MySQL 8.0.46 at 127.0.0.1:3307; Pint, Composer validation, Blade compilation, and Vite build passed. A GitHub Actions MySQL workflow is included but remote results were not yet observed at authoring. The temporary server is stopped after tests. Existing MySQL80 could not be started from this process; its credentials and Herd startup remain local setup tasks. Main development database migrations were not run. The foundation already includes minimal organization models/foreign keys, a tested regional has-many-through relation, an idempotent fixture seeder, and an interactive administrator creation command to exercise assignment safely. These do not complete milestone 1's CRUD/requirements scope.
+**Verification:** 22 tests / 141 assertions passed against the existing MySQL80 service on 127.0.0.1:3306 on 2026-11-10, using the isolated `checkpoint_test` database/account. Development migrations and the repeatable organization fixture seeder completed in `checkpoint` using a separate application account. Existing database accounts were preserved. Herd is running and the login page returned HTTP 200 at `http://websys2.test/login`. Administrator creation and the interactive account walkthrough remain owner tasks. Pint, Composer validation, Blade compilation, and Vite build passed during foundation implementation. A GitHub Actions MySQL workflow is included; remote results are not claimed here. The earlier temporary server on port 3307 remains stopped. The foundation includes minimal organization models/foreign keys, a tested regional has-many-through relation, an idempotent fixture seeder, and an interactive administrator creation command. These do not complete milestone 1's CRUD/requirements scope.
 
 **Acceptance:** a fresh checkout can be configured from the README; sessions work; a new account has no employee-record access or role escalation path. Password reset is demonstrated through local logs. Only this foundation is the first development deliverable.
 

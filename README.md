@@ -68,7 +68,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The foundation was verified locally with **22 tests and 141 assertions**, Pint, Composer validation, Blade compilation, and the Vite build. Because the machine's existing MySQL service could not be started from the agent process and credentials were unavailable, tests used a separate disposable MySQL 8.0.46 instance on port 3307. That instance is stopped after verification. The main Herd/MySQL installation still needs the local setup above; no claim is made that the demo is already served.
+The foundation was verified locally with **22 tests and 141 assertions** against the running MySQL80 service on port 3306 on 2026-11-10. Dedicated local accounts isolate `checkpoint` from `checkpoint_test`; credentials are stored only in ignored environment files. Development migrations and the organization fixture seeder completed, and Herd returned HTTP 200 for `http://websys2.test/login`. Pint, Composer validation, Blade compilation, and the Vite build passed during foundation implementation. The earlier disposable server on port 3307 remains stopped. The owner still needs to run `php artisan checkpoint:create-admin` and perform the interactive walkthrough.
 
 ## Documentation and next milestones
 

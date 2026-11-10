@@ -10,7 +10,7 @@ Start by inspecting git status, repository instructions, README.md, main/docs/Sy
 Agreed stack and services:
 - One Laravel application at the repository root; Blade, Tailwind, and Alpine.js for small interactions. No separate SPA, microservices, or generic repository abstraction.
 - MySQL, matching the proposal. Do not substitute PostgreSQL even though it is installed.
-- Herd for the local classroom demo. Check the existing MySQL80 Windows service, reported stopped during planning; verify server/version/access before installing another server or changing configuration.
+- Herd for the local classroom demo. The existing MySQL80 service and Herd were verified running on 2026-11-10; the login page is served at `http://websys2.test`. Recheck their status when resuming.
 - Keep the selected Laravel 13/Fortify 1 session-auth setup with Blade. Verify installed versions and lockfiles before relying on package APIs; do not blindly reuse obsolete starter commands.
 - PHPUnit, Pint, Vite, and Laravel Sanctum in the API milestone. Local private filesystem, database notifications in their milestone, database session/cache, and local mail logging for password resets. Boost is already installed as a development-only dependency.
 - A daily Laravel scheduler for alerts/reconciliation. No paid services, real email provider, Redis, Docker, AI API, or dedicated queue worker is required for the baseline.
@@ -63,7 +63,7 @@ Work method:
 - Ask only when missing decisions materially block work. Do not reopen choices already confirmed. Deadline and team experience can be supplied later; do not invent a delivery date.
 
 Next development deliverable:
-First resolve any outstanding local setup needed to run the existing foundation: Herd startup, the main MySQL service, and separate development/test database credentials. Never print or commit credentials. Then implement the earliest incomplete milestone in Implementation.md, normally milestone 1: organization CRUD, domains/qualifications/job requirements, and scoped permissions, with tests. The minimal region/facility/job schema, Admin assignment boundary, and regional relationship already exist; extend them rather than duplicating them.
+The existing foundation is configured against MySQL80 on port 3306 with separate development/test accounts; migrations, organization seeding, and 22 tests / 141 assertions passed. Administrator creation and the interactive walkthrough remain owner tasks. Recheck local service availability as needed. Never print or commit credentials. Then implement the earliest incomplete milestone in Implementation.md, normally milestone 1: organization CRUD, domains/qualifications/job requirements, and scoped permissions, with tests. The minimal region/facility/job schema, Admin assignment boundary, and regional relationship already exist; extend them rather than duplicating them.
 
 Learning requirement:
 Explain relevant concepts in plain language while developing. Follow API-Learning-Path.md: first web routes and sessions, then evidence/domain rules, then the versioned JSON route and Resource, then Sanctum tokens, abilities, region checks, errors, and tests. Let the owner run small requests as each piece becomes available. Clearly distinguish implemented endpoints from planned examples.
