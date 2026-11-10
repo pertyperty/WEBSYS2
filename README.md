@@ -1,45 +1,85 @@
 # CheckPoint
 
-CheckPoint is a proposed Regional Safety Compliance Management System for healthcare logistics. It will centralize employee credentials, training, qualification requirements, regional readiness, audits, and restricted third-party verification.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation is implemented; training, credentials, compliance calculations, audits, alerts, reports, and auditor API remain planned.
 
-**Status:** initial scope agreed; application development has not started. This repository contains documentation, not a runnable Laravel application. The team will provide deadline and experience details later.
+## Available now
 
-## Agreed implementation
+- Laravel 13.40, Fortify 1.41, Blade, Tailwind 4, Alpine.js, and Vite 8, with committed dependency lockfiles.
+- Staff registration, login/logout, password reset through local mail logs, and profile/password changes.
+- Six role definitions, unassigned-staff onboarding, and administrator-only account assignments/deactivation.
+- Minimal region/facility/job records for assignment. Full organization management is milestone 1.
+- Private local storage configuration with automatic file serving disabled; uploads/downloads arrive later.
+- PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
-- Laravel monolith with Blade, Tailwind CSS, and small Alpine.js interactions.
-- MySQL, matching the proposal. PostgreSQL is installed locally but will not be used.
-- Herd for a local classroom demo, private file storage, in-app notifications, and local mail logging.
-- Session authentication for web users; Sanctum tokens for API-only auditors.
-- Separate Admin, Compliance Officer, Regional Director, Facility Manager, Staff, and Auditor roles.
-- Separate training courses and enrollment, plus job-required qualifications grouped by safety domain.
-- PHPUnit tests, Laravel Pint, synthetic seed data, and CSV reports.
+The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
 
-No paid service, cloud deployment, separate SPA, or additional agent is required.
+## Local setup on Windows
 
-## Complete release scope
+Use PHP 8.4+, Composer 2, Node 22.12+ with npm, MySQL 8.0+, and Herd. The tested versions are PHP 8.4.27, Composer 2.10.3, Node 22.20.0, npm 11.15.0, and MySQL 8.0.46. Dependency engine requirements and lockfiles remain authoritative.
 
-Staff register without privileged access, receive an administrator-assigned facility and job, enroll in published training, upload evidence, and track compliance. Officers record training completion and approve or reject evidence with a review history. Managers and directors see their assigned scope. Administrators manage accounts, assignments, requirements, and auditor access.
+1. Open Herd. Start your existing MySQL service through Windows Services; starting `MySQL80` may require an administrator terminal. Verify its port and credentials. Do not initialize over an existing MySQL data directory.
+2. Through your MySQL administrator client, create an empty `checkpoint` development database and a separate disposable `checkpoint_test` database, both using `utf8mb4`. Create local accounts `checkpoint` and `checkpoint_test` with passwords you choose privately. Grant each account privileges only on its corresponding database. Never use the test database for records you want to keep.
+3. From the repository root, install dependencies and copy templates **only if those private files do not already exist**:
 
-The complete release includes role dashboards, private downloads, a qualification matrix, eligibility calculations, daily in-app expiry alerts, audits with corrective findings, filtered CSV reports, and a restricted verification API. Modules ship in tested milestones.
+```powershell
+composer install
+npm ci
+Copy-Item .env.example .env
+Copy-Item .env.testing.example .env.testing
+```
 
-Approved evidence remains valid through its expiry date in Asia/Manila, with a warning 30 days ahead. Missing, pending, rejected, or expired required evidence blocks eligibility. A pending renewal does not replace still-valid approved evidence. Missing assignments or empty requirement configurations produce **not assessable**.
+4. Edit `.env` with your development account credentials and actual `APP_URL` from Herd. Edit `.env.testing` with the separate test account credentials/host/port. Keep `DB_DATABASE=checkpoint_test` in the test file. Both files are ignored by Git. Do not paste passwords into chat or commit them.
+5. For a fresh installation, generate application keys, run additive migrations, and seed the small organization fixture:
 
-## Documentation
+```powershell
+php artisan key:generate
+php artisan key:generate --env=testing
+php artisan migrate
+php artisan db:seed
+php artisan checkpoint:create-admin
+npm run build
+```
+
+The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The foundation seeder is repeatable and creates a demo region/hub and two jobs; the 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
+
+6. Link this repository root in Herd. Its document root must be `public/`, not the repository root. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
+
+The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. In-app expiry notifications and scheduler jobs are not implemented yet. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
+
+## First walkthrough
+
+1. Sign in as the administrator created by the command above.
+2. In another browser session, register a staff account. It must land on **Awaiting your assignment**, with profile access but no employee features.
+3. As Admin, open **Accounts**, expand that account, keep the Staff role, and assign the demo facility and a job together.
+4. Refresh the staff dashboard. It shows its assignment and clearly states that compliance assessments are not implemented yet.
+5. Try a password reset and profile/password change. Staff must not be able to open `/admin/users` or assign their own role.
+
+Full CRUD and scope-specific compliance pages are deliberately deferred. Director/manager dashboards currently show only foundation account information. Auditor accounts are blocked from browser login; their API will be implemented later.
+
+## Checks
+
+```powershell
+composer validate --strict
+php artisan config:clear
+php artisan test --compact
+php vendor/bin/pint --format agent
+npm run build
+```
+
+Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
+
+The foundation was verified locally with **22 tests and 141 assertions**, Pint, Composer validation, Blade compilation, and the Vite build. Because the machine's existing MySQL service could not be started from the agent process and credentials were unavailable, tests used a separate disposable MySQL 8.0.46 instance on port 3307. That instance is stopped after verification. The main Herd/MySQL installation still needs the local setup above; no claim is made that the demo is already served.
+
+## Documentation and next milestones
 
 | Document | Purpose |
 |---|---|
-| [System specification](main/docs/System-Proposal.md) | Scope, permissions, data model, workflows, and compliance rules |
-| [Development decisions and services](main/docs/Development-Decisions.md) | Confirmed choices, local prerequisites, tools, and remaining context |
-| [Implementation plan](main/docs/Implementation.md) | Milestones, acceptance criteria, rubric coverage, and progress |
-| [Kickstart prompt](main/docs/Kickstart-Prompt.md) | Copyable co-developer prompt for the next development session |
+| [System specification](main/docs/System-Proposal.md) | Full scope, permissions, model, workflows, and rules |
+| [Development decisions](main/docs/Development-Decisions.md) | Agreed choices, services, and local observations |
+| [Implementation plan](main/docs/Implementation.md) | Progress, acceptance criteria, and eight-requirement traceability |
+| [API learning path](main/docs/API-Learning-Path.md) | Learn routes, JSON, Sanctum, abilities, scope, and API tests as we build |
+| [Co-developer kickoff](main/docs/Kickstart-Prompt.md) | Original development brief; consult progress before continuing |
 
-These documents translate the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into an implementation plan. The original Word proposal is unchanged. The existing `main/docs/` location is retained to preserve links.
+CheckPoint will **provide** an API consumed by third-party auditors. That API is not implemented in this foundation. We will explain and exercise it incrementally during its milestone, using placeholder tokens in shared examples.
 
-## Before development starts
-
-1. Use the [kickstart prompt](main/docs/Kickstart-Prompt.md) when asking the co-developer to begin implementation.
-2. Select a supported Laravel release and compatible authentication setup during scaffolding. The installer version is not the framework version.
-3. Start/configure MySQL and create separate development and test databases. The planning machine has a `MySQL80` service that was stopped when checked; no database changes were made.
-4. Verify Herd linking, npm, and dependency requirements. Commit lockfiles and document exact setup commands when the application exists.
-
-PHP 8.4.27, Composer 2.10.3, Laravel Installer 5.32.0, Node 22.20.0, and PHP's MySQL driver were verified on 2026-11-10. These observations do not establish that the future application is configured or running. Never commit `.env`, real employee documents, or production credentials.
+To regenerate local Laravel Boost agent guidance/skills, run `php artisan boost:install --guidelines --skills --no-interaction` after configuring `.env`. Boost is a development-only tool; generated local skill folders are ignored. The Word proposal is unchanged, and `main/docs/` is retained. Deadline and team experience are still to be supplied.
