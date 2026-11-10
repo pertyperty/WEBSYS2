@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** milestone 3 implemented; compliance calculations, dashboards, and assessment history are next.
+**Stage:** milestone 4 implemented; notifications, audits, and reports are next.
 **Last updated:** 2026-11-10.
-**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Compliance dashboards/history, audits, alerts, reports, and the auditor API remain planned.
+**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. Audits, in-app alerts, reports, and the auditor API remain planned.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -64,10 +64,10 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 4 Compliance, dashboards, and history
 
-- [ ] Centralize required-qualification selection, training/evidence checks, eligibility, and percentage calculation.
-- [ ] Implement inclusive Asia/Manila expiry, 30-day warnings, and not-assessable configuration states.
-- [ ] Add qualification matrix and staff/officer/facility/regional/admin dashboards with correct scoped denominators.
-- [ ] Record material assessment history and recalculate after requirement, assignment, review, completion, and date changes.
+- [x] Centralize required-qualification selection, training/evidence checks, eligibility, and percentage calculation.
+- [x] Implement inclusive Asia/Manila expiry, 30-day warnings, and not-assessable configuration states.
+- [x] Add qualification matrix and staff/officer/facility/regional/admin dashboards with correct scoped denominators.
+- [x] Record material assessment history and recalculate after requirement, assignment, review, completion, and date changes.
 
 **Acceptance:** a fixed clock yields matching dashboard and service results; expiry today, tomorrow, day 30/31, non-expiring qualifications, incomplete training, pending renewals, and empty requirements have tests. Rounding never grants eligibility.
 
@@ -138,7 +138,7 @@ Explain the data distinctions:
 
 - `users.job_role_id` assigns one job to a Staff account. `facility_id` assigns one facility, whose `region_id` determines the region. Directors have a direct regional assignment; managers have a facility assignment.
 - `job_role_qualification` defines what a job requires. `employee_qualification` is a separate many-to-many relationship reserved for effective earned qualifications after evidence review in milestone 3. Setting requirements does not write employee awards.
-- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion is recorded separately. Evidence validation and review are implemented; employee-wide compliance is next.
+- Each qualification belongs to one safety domain and has `requires_training` and `requires_expiry` flags. Training completion is recorded separately. Evidence validation, review, and employee-wide compliance are implemented.
 - Inactive records remain in the database. Region/domain deactivation is blocked by active child records; assigned accounts block region/facility/job deactivation. Required qualifications cannot be deactivated until removed from job requirements. Account assignments accept only active configuration records.
 - A facility with assigned accounts cannot be moved between regions. Reassign the accounts first so an indirect edit cannot silently move their visibility. Account-role validation still requires complete assignments for managers/directors.
 - No requirements means not assessable in the future compliance module, never automatically 100% compliant. The current page displays requirements without claiming an eligibility result.
@@ -184,13 +184,40 @@ Useful training demonstrations: Staff submits again without getting a duplicate;
 
 A credential's review status is `pending`, `approved`, or `rejected`. Expiry is evaluated separately, so a historical approval is never rewritten into an expiry decision. The events record submission and review actors, dates, and feedback. The record keeps its submission-time facility/job IDs; current employee assignment still controls later scoped compliance access. Neither managers nor directors may read raw private evidence or review details through these routes.
 
-The `employee_qualification.credential_document_id` link is a materialized current-evidence pointer updated after review. It is not a source of truth for date validity: time may pass without a new write. The detail page calls the selection action on read. Milestone 4 must reuse that action and reconcile assessment history, rather than treating an old pivot as proof of current compliance. Whole-employee eligibility is not implemented in this milestone.
+The `employee_qualification.credential_document_id` link is a materialized current-evidence pointer updated after review. It is not a source of truth for date validity: time may pass without a new write. The detail page calls the selection action on read. Milestone 4 reuses the selection predicate for whole-employee eligibility and reconciles assessment history, rather than treating an old pivot as proof of current compliance.
 
 Defend the failure boundaries: a database transaction cannot roll back a filesystem write, so submission explicitly cleans up its newly stored file. A failed history insert rolls back the new document; a failed review event rolls back the review status and pivot. A review locks the employee before the document so simultaneous reviews of different submissions for the same employee serialize their effective-link update. A stale second decision sees the terminal state and fails. Rejection feedback is required and HTML-escaped. Approval checks that the file is available; missing historical files are shown without exposing a storage path.
 
 `CredentialSubmissionTest` uses real test-mode uploaded files for content cases. Laravel's upload fake normally derives MIME from the supplied name; relying on that fake would miss renamed script payloads. Tests also cover JPEG/PNG bytes, file-size limits, failed writes, rollback cleanup preserving old evidence, transfer context, role/ownership denial, safe attachment headers, stale decisions, incomplete training, pending renewals, non-expiring qualifications, and the Manila midnight expiry boundary. Tests use a fake disk and the dedicated MySQL test database; no private demonstration uploads are reset.
 
 Content-based MIME checks are not antivirus scanning or full PDF parsing. Downloads are attachments on authenticated routes, not inline public URLs. Backups and the final demonstration dataset remain milestone 7 work; no nonexistent seeded evidence is presented as a working download.
+
+## Compliance calculation and history defense walkthrough
+
+Start with `AssessEmployeeCompliance::handle()`. It reads the current job's required qualifications, evaluates each one, counts the satisfied requirements, and compares **exact counts** for eligibility. The percentage is a rounded display value. Missing facility/job, inactive employee/assignment/region, no requirements, or an inactive required qualification/domain returns **Not assessable** with a null percentage. Inactive requirements remain in the required set: silently removing them could falsely grant eligibility.
+
+`SelectEffectiveCredential::isQualifying()` is the shared evidence predicate used by review-time selection and assessment-time selection. It checks active configuration, approval, issued/expiry calendar dates, and the linked completed enrollment when training is required. The enrollment must belong to that employee and its course must map to that qualification. Completion alone is never enough. `choose()` selects the latest issue date and then highest ID among valid evidence; a pending/rejected/expired renewal cannot displace an older valid approval. Course archival retains completed training history.
+
+Each request captures one immutable Manila date. Evidence is valid through expiry day. An effective approval expiring on or before today + 30 days shows a warning without losing eligibility. Without effective approval, the display priority is pending, latest reviewed rejection, expired approval, then missing. Required training incompleteness is also displayed separately. Optional evidence never changes the required count. The legacy award pivot is a convenient review-time pointer and may become stale; assessment never uses it as the source of validity.
+
+The assessor has no writes. `DashboardController` and `QualificationMatrixController` eager-load its declared relations once for the scoped staff set. The calculation performs no per-person/per-qualification queries once loaded. Dashboard counts include current Staff accounts, including inactive staff as not assessable; its eligibility rate uses assessable staff only. Requirement warning/missing/expired/training counts cover assessable employees only. Pending documents and enrollment totals include all scoped Staff, with optional evidence explicitly included. Matrix columns are the union of required qualifications on the current paginated page, with N/A for a requirement absent from a job.
+
+`RecordComplianceAssessment` handles the separate history concern. It locks the employee, reloads inputs, computes a primitive snapshot, and hashes material fields while excluding the assessment date. It compares only with the latest history row; an unchanged result is skipped, while returning to an earlier state appends a new row. The returned result always has today's date even when no row was appended. Stored snapshots keep assignment names, qualification/domain names, training/expiry rules and states, selected evidence ID, counts, actor/source, and assessment date. They exclude private paths, downloads, review notes, and completion feedback. There are no update/delete routes for these snapshots.
+
+Assignment changes (including Staff role removal), submissions, reviews, and completions record history inside the same business transaction. Submission/review/completion all lock the employee before child records to keep lock ordering consistent. Requirement sync and qualification updates commit their configuration change first, then reconcile affected Staff one at a time. This avoids holding a configuration write lock while waiting for an employee lock; if bulk reconciliation is interrupted, the already-saved configuration remains authoritative and reads/the command repair history. Other catalog edits are reconciled on employee detail/history reads or the next daily run. The current data is computed live immediately on aggregate pages; aggregate reads do not create one history write per employee.
+
+`ComplianceHistoryController` scopes the employee before reading snapshots. After a transfer, the old manager gets 404 and the new manager can see retained historical assignment context. Managers/directors receive summary states without access to private evidence or notes. `checkpoint:reconcile-compliance` runs idempotently for Staff at 00:05 Asia/Manila with overlap protection. Run it manually for a classroom demonstration or keep `php artisan schedule:work` running. A stopped scheduler delays history recording of date-only changes; it does not make dashboard/matrix/detail eligibility stale. This command does not yet deliver notifications.
+
+Defense questions to practice:
+
+- **Why not calculate from the award pivot?** A cached review-time link does not expire itself; the predicate must check today's date.
+- **Why can a training-completed employee be ineligible?** Every required qualification still needs approved, valid evidence linked to the matching completion.
+- **Why is an employee with no requirements not 100% compliant?** There is no configured basis for assessment; report null and request configuration.
+- **Why keep calculation and history separate?** Reads can calculate accurate status without unnecessary writes, while workflows preserve a material audit trail.
+- **Does a 30-day warning block duty?** No. The approval stays valid through expiry day; the warning requests renewal.
+- **How does this help the later API?** The shared predicate can evaluate a referenced submission. The API must verify that reference itself, rather than substitute a newer approval or report employee-wide eligibility. Authentication, regional scope, resources, and rate limiting remain milestone 6.
+
+`ComplianceAssessmentTest` covers evidence precedence, required-only counts, training ownership/linkage, future dates, inactive configuration, null percentages, midnight/day-30/day-31 boundaries, stale award pointers, and eager-load query behavior. `ComplianceHistoryTest` covers deduplication, state returns, retained snapshots, workflow hooks, transfers, and date reconciliation. `ComplianceDashboardTest` covers denominators, scope, N/A cells, escaped names, access rejection, and private-data exclusion. Tests run only against `checkpoint_test`.
 
 ## Definition of done
 
@@ -206,6 +233,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 | 2026-11-10 | Implemented organization/qualification management, job requirements, scoped employee pages, and defense walkthrough | 69 tests/454 assertions on isolated MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 | 2026-11-10 | Implemented training courses/enrollment, officer completion, scoped progress, and training defense walkthrough | 105 tests/702 assertions on MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 | 2026-11-10 | Implemented private credentials, immutable review events, current-evidence selection, and defense walkthrough | 142 tests/963 assertions on MySQL; additive migration; upload/privacy/failure-path coverage; Pint, Composer validation, Blade and Vite checks |
+| 2026-11-10 | Implemented live compliance, scoped dashboards/matrix, material snapshots, and daily history reconciliation | 169 tests/1,142 assertions on isolated MySQL; additive migration; Pint, Composer validation, Blade and Vite checks |
 
 ## Risks and responses
 
@@ -213,7 +241,7 @@ A workflow is complete when its persistence, validation, policy, UI/API, error s
 |---|---|
 | Full scope exceeds available course time | Use staged vertical slices; record deadline/team capacity before scheduling milestones. |
 | Private evidence or reports cross scope | Central policies plus scoped queries and cross-region/facility tests. |
-| Renewal/expiry/training rules diverge | One assessment service, fixed-clock tests, immutable evidence, and explicit enrollment requirements. |
+| Renewal/expiry/training rules diverge | One assessment action, fixed-clock tests, immutable evidence, and explicit enrollment requirements. |
 | Alerts silently stop | Document scheduler process and calculate current validity on read. |
 | Test commands destroy local work | Separate MySQL test database and environment guards. |
 | Existing MySQL service is unavailable | Check service/version/access before scaffolding; document setup without silently switching database engines. |

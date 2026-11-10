@@ -1,11 +1,11 @@
 # CheckPoint co-developer kickoff prompt
 
-Use this prompt to continue development. The foundation is now implemented; inspect the progress record and do not recreate it. Supply deadline/team experience when known. Work in reviewable milestones and explain the auditor API as it is built.
+Use this prompt to continue development. Milestones 0?4 are now implemented; inspect the progress record and do not recreate it. Supply deadline/team experience when known. Work in reviewable milestones and explain the auditor API as it is built.
 
 ```text
 Act as our co-developer for CheckPoint, a Regional Safety Compliance Management System for healthcare logistics. Help our student team build an understandable, complete Laravel system and explain decisions we need to maintain and defend.
 
-Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, main/docs/Implementation.md, and main/docs/API-Learning-Path.md. Preserve unrelated changes and existing documentation. The Laravel 13.40/Fortify 1.41 foundation already exists under `main/`. Check implemented code and remaining setup rather than scaffolding again. The original Word proposal is the business source.
+Start by inspecting git status, repository instructions, README.md, main/docs/System-Proposal.md, main/docs/Development-Decisions.md, main/docs/Implementation.md, and main/docs/API-Learning-Path.md. Preserve unrelated changes and existing documentation. The Laravel 13.40/Fortify 1.41 foundation already exists under `main/`. Check implemented code and remaining setup rather than scaffolding again. Authentication, organization/requirements, training, private credentials/reviews, and live compliance with scoped dashboards/matrix/history exist. Continue milestone 5 (notifications, audits, CSV reports) after checking the progress record. Reuse AssessEmployeeCompliance and SelectEffectiveCredential; preserve RecordComplianceAssessment snapshots. The original Word proposal is the business source.
 
 Agreed stack and services:
 - One Laravel application under `main/` (run Composer, npm, and Artisan there); Blade, Tailwind, and Alpine.js for small interactions. No separate SPA, microservices, or generic repository abstraction.

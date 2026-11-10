@@ -15,7 +15,7 @@ use League\Flysystem\FilesystemException;
 
 class ReviewCredential
 {
-    public function __construct(private SelectEffectiveCredential $selection) {}
+    public function __construct(private SelectEffectiveCredential $selection, private RecordComplianceAssessment $history) {}
 
     public function handle(User $reviewer, CredentialDocument $document, CredentialStatus $decision, ?string $note): void
     {
@@ -61,6 +61,7 @@ class ReviewCredential
             } else {
                 $employee->qualifications()->detach($locked->qualification_id);
             }
+            $this->history->handle($employee, 'review', $reviewer);
         });
     }
 }

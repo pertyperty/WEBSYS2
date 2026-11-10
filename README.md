@@ -1,6 +1,6 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Employee-wide compliance calculations, audits, alerts, reports, and the auditor API remain planned.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. Audits, in-app alerts, reports, and the auditor API remain planned.
 
 ## Available now
 
@@ -13,6 +13,8 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Draft/published/archived courses, Staff self-enrollment, Officer-recorded completion, and scoped training progress.
 - Private PDF/JPEG/PNG submissions, protected attachment downloads, append-only submission/review events, and officer review.
 - Current qualifying-evidence selection preserves older valid approvals while renewals are pending or rejected.
+- Live employee eligibility, qualification matrix, scoped dashboard denominators, and append-only material assessment snapshots.
+- Daily Manila-time reconciliation, with status calculated on read even when the scheduler is stopped.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -49,17 +51,17 @@ The administrator command prompts for name, unique email, and a hidden password.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
-The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. In-app expiry notifications and scheduler jobs are not implemented yet. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
+The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. Daily compliance history reconciliation is scheduled; in-app expiry notifications remain planned. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
 
 ## First walkthrough
 
 1. Sign in as the administrator created by the command above.
 2. In another browser session, register a staff account. It must land on **Awaiting your assignment**, with profile access but no employee features.
 3. As Admin, open **Accounts**, expand that account, keep the Staff role, and assign the demo facility and a job together.
-4. Refresh the staff dashboard. It shows its assignment and clearly states that compliance assessments are not implemented yet.
+4. Refresh the staff dashboard. It shows its assignment and live compliance totals. With required evidence missing, the employee is not eligible; a job with no requirements is not assessable.
 5. Try a password reset and profile/password change. Staff must not be able to open `/admin/users` or assign their own role.
 
-Organization and qualification configuration is available through the navigation. Directors/managers can browse their scoped employee directory; staff can view only their own requirements. The dashboard still shows account information without a compliance calculation. Auditor accounts are blocked from browser login; their API will be implemented later.
+Organization and qualification configuration is available through the navigation. Directors/managers can browse their scoped employee directory; staff can view only their own requirements. Dashboard, qualification matrix, employee assessments, and assessment history use the same current employee scope. Auditor accounts are blocked from browser login; their API will be implemented later.
 
 ## Checks
 
@@ -86,7 +88,7 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 3. Register a Staff account and assign its facility/job as Admin. Open **Employees** to inspect its inherited requirements. Requirements do not award a qualification or indicate eligibility.
 4. Sign in with facility manager/regional director accounts assigned through **Accounts**. They see only employees in their facility/region. A changed employee ID outside that scope returns 404. Staff see only themselves; unassigned Staff remain on onboarding.
 5. Try deactivating an assigned facility/job or a required qualification. Validation explains the dependency to resolve. A facility cannot move regions while accounts are assigned. Records are retained and may be reactivated; there are no delete actions.
-6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Employee-wide compliance percentages and the API remain future milestones.
+6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Continue with the compliance walkthrough below; the auditor API remains a future milestone.
 
 
 ## Training walkthrough
@@ -107,7 +109,19 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 
 `CREDENTIAL_MAX_UPLOAD_KIB` controls the limit (default 10240 KiB / 10 MiB). PHP's web `upload_max_filesize` and `post_max_size` must also permit the chosen limit. Never create a public link to `storage/app/private`. Downloads use authorized application routes, generated attachment names, no-store caching, and nosniff/sandbox headers. Filename extensions alone do not establish file content. No antivirus/PDF parser service is included; validation checks content-based MIME and readable JPEG/PNG image structure.
 
-The current effective-evidence link is refreshed after review. Views calculate validity using the selection action at read time, rather than trusting a cached link after expiry. Employee-wide eligibility, percentage calculations, and assessment history are the next milestone.
+The current effective-evidence link is refreshed after review. Views calculate validity using the selection action at read time, rather than trusting a cached link after expiry. Employee-wide eligibility, percentage calculations, and assessment history reuse the same validity predicate; they never trust the cached link after expiry.
+
+## Compliance walkthrough
+
+From `main/`, run the additive `php artisan migrate` after pulling this milestone. Existing organization/training/evidence data is preserved.
+
+1. Open **Dashboard**. Explain the eligible / assessable denominator; not-assessable staff remain visible as a separate count. Inactive employees and incomplete/inactive configurations cannot become eligible.
+2. Open **Matrix**, then an employee. The matrix combines qualifications required by staff on the current page. N/A means a qualification is not required by that employee's job; it never means awarded.
+3. Submit synthetic evidence, complete required training as Officer, and review the linked evidence. The employee becomes eligible only when every mandatory qualification has valid approved evidence. A newer pending renewal keeps an older valid approval effective.
+4. Open **View assessment history**. Material snapshots retain assignment names, required qualification states, counts, actor/source, and date. Refreshing an unchanged result does not append another row. Managers/directors see summaries without private files or review notes.
+5. For date transitions, run `php artisan checkpoint:reconcile-compliance`. It appends changed results only. For continuous local scheduling, run `php artisan schedule:work` in a separate terminal during the demo; the task is due daily at 00:05 Asia/Manila. Stop with Ctrl+C. Pages calculate live state even without this process. In-app alerts arrive in milestone 5.
+
+Evidence is valid through its expiry date in Asia/Manila. Warnings include today through 30 days ahead. No assignment, no requirements, or inactive required configuration gives a null percentage and **Not assessable**. Eligibility compares exact counts, independently of the rounded display percentage. See the [compliance defense walkthrough](main/docs/Implementation.md#compliance-calculation-and-history-defense-walkthrough).
 
 ## Documentation and next milestones
 

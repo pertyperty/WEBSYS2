@@ -15,6 +15,8 @@ use Throwable;
 
 class SubmitCredential
 {
+    public function __construct(private RecordComplianceAssessment $history) {}
+
     /**
      * @param  array{qualification_id: int|string, issued_at: string, expires_at?: string|null, employee_training_id?: int|string|null}  $data
      */
@@ -30,6 +32,8 @@ class SubmitCredential
             }
 
             return DB::transaction(function () use ($employee, $file, $data, $path): CredentialDocument {
+                $employee = User::lockForUpdate()->findOrFail($employee->id);
+                Gate::forUser($employee)->authorize('submit-credentials');
                 $document = CredentialDocument::create([
                     'employee_id' => $employee->id,
                     'facility_id' => $employee->facility_id,
@@ -44,6 +48,8 @@ class SubmitCredential
                     'file_size' => $file->getSize(),
                 ]);
                 $document->events()->create(['actor_id' => $employee->id, 'type' => CredentialEventType::Submitted]);
+
+                $this->history->handle($employee, 'submission', $employee);
 
                 return $document;
             });

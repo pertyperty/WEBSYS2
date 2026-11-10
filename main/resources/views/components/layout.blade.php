@@ -24,7 +24,7 @@
                     <a href="{{ route('qualifications.index') }}">Qualifications</a>
                 @endcan
                 @can('manage-requirements')<a href="{{ route('job-roles.index') }}">Jobs & requirements</a>@endcan
-                @can('view-employees')<a href="{{ route('employees.index') }}">Employees</a>@endcan
+                @can('view-employees')<a href="{{ route('employees.index') }}">Employees</a><a href="{{ route('qualification-matrix') }}">Matrix</a>@endcan
                 @can('view-training')
                     <a href="{{ route('training-courses.index') }}">Courses</a>
                     <a href="{{ route('training-enrollments.index') }}">Training progress</a>

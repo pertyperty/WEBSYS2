@@ -7,32 +7,45 @@ use App\Enums\TrainingStatus;
 use App\Models\CredentialDocument;
 use App\Models\Qualification;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 class SelectEffectiveCredential
 {
     public function find(User $employee, Qualification $qualification): ?CredentialDocument
     {
-        if (! $qualification->is_active || ! $qualification->safetyDomain->is_active) {
-            return null;
-        }
-        $today = now('Asia/Manila')->toDateString();
-        $query = CredentialDocument::where('employee_id', $employee->id)->where('qualification_id', $qualification->id)
-            ->where('status', CredentialStatus::Approved)->where('issued_at', '<=', $today)
-            ->where(function (Builder $dates) use ($qualification, $today): void {
-                $dates->where('expires_at', '>=', $today);
-                if (! $qualification->requires_expiry) {
-                    $dates->orWhereNull('expires_at');
-                }
-            });
-        if ($qualification->requires_training) {
-            $query->whereHas('employeeTraining', function (Builder $enrollments) use ($employee, $qualification, $today): void {
-                $enrollments->where('employee_id', $employee->id)->where('status', TrainingStatus::Completed)
-                    ->whereNotNull('completed_at')->where('completed_at', '<=', $today)
-                    ->whereHas('trainingCourse', fn (Builder $courses): Builder => $courses->where('qualification_id', $qualification->id));
-            });
-        }
+        $documents = $employee->credentialDocuments()->where('qualification_id', $qualification->id)
+            ->with('employeeTraining.trainingCourse')->get();
 
-        return $query->orderByDesc('issued_at')->orderByDesc('id')->first();
+        return $this->choose($employee, $qualification, $documents, CarbonImmutable::now('Asia/Manila')->startOfDay());
+    }
+
+    /** @param Collection<int, CredentialDocument> $documents */
+    public function choose(User $employee, Qualification $qualification, Collection $documents, CarbonImmutable $asOf): ?CredentialDocument
+    {
+        return $documents->filter(fn (CredentialDocument $document): bool => $document->employee_id === $employee->id
+            && $this->isQualifying($document, $qualification, $asOf))
+            ->sortBy([['issued_at', 'desc'], ['id', 'desc']])
+            ->first();
+    }
+
+    public function isQualifying(CredentialDocument $document, Qualification $qualification, CarbonImmutable $asOf): bool
+    {
+        $today = $asOf->setTimezone('Asia/Manila')->toDateString();
+        if ($document->qualification_id !== $qualification->id || $document->status !== CredentialStatus::Approved
+            || ! $qualification->is_active || ! $qualification->safetyDomain->is_active
+            || ! $document->issued_at || $document->issued_at->toDateString() > $today
+            || ($document->expires_at ? $document->expires_at->toDateString() < $today : $qualification->requires_expiry)) {
+            return false;
+        }
+        if (! $qualification->requires_training) {
+            return true;
+        }
+        $enrollment = $document->employeeTraining;
+
+        return $enrollment !== null && $enrollment->employee_id === $document->employee_id
+            && $enrollment->trainingCourse->qualification_id === $qualification->id
+            && $enrollment->status === TrainingStatus::Completed && $enrollment->completed_at !== null
+            && $enrollment->completed_at->toDateString() <= $today;
     }
 }

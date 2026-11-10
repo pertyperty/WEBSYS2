@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\RecordComplianceAssessment;
+use App\Enums\UserRole;
 use App\Http\Requests\SaveQualificationRequest;
 use App\Models\Qualification;
 use App\Models\SafetyDomain;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -40,9 +44,12 @@ class QualificationController extends Controller
         ]);
     }
 
-    public function update(SaveQualificationRequest $request, Qualification $qualification): RedirectResponse
+    public function update(SaveQualificationRequest $request, Qualification $qualification, RecordComplianceAssessment $history): RedirectResponse
     {
         $qualification->update($request->validated());
+        foreach (User::where('role', UserRole::Staff)->whereHas('jobRole.qualifications', fn (Builder $query): Builder => $query->whereKey($qualification->id))->lazyById(100) as $employee) {
+            $history->handle($employee, 'qualification', $request->user());
+        }
 
         return to_route('qualifications.index')->with('status', 'Record updated.');
     }

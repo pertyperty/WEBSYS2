@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\ComplianceHistoryController;
 use App\Http\Controllers\CredentialDocumentController;
 use App\Http\Controllers\CredentialDownloadController;
 use App\Http\Controllers\CredentialReviewController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\JobRequirementController;
 use App\Http\Controllers\JobRoleController;
 use App\Http\Controllers\QualificationController;
+use App\Http\Controllers\QualificationMatrixController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SafetyDomainController;
 use App\Http\Controllers\TrainingCompletionController;
@@ -21,7 +24,7 @@ Route::redirect('/', '/dashboard');
 Route::middleware('auth')->group(function () {
     Route::view('/awaiting-assignment', 'onboarding')->name('onboarding');
     Route::view('/profile', 'profile')->name('profile');
-    Route::view('/dashboard', 'dashboard')->middleware('assigned')->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->middleware('assigned')->name('dashboard');
 
     Route::middleware('can:manage-users')->group(function () {
         Route::get('/admin/users', [UserAssignmentController::class, 'index'])->name('admin.users');
@@ -43,6 +46,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['assigned', 'can:view-employees'])->group(function () {
+        Route::get('/qualification-matrix', QualificationMatrixController::class)->name('qualification-matrix');
+        Route::get('/employees/{employee}/compliance-history', ComplianceHistoryController::class)->whereNumber('employee')->name('employees.compliance-history');
         Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
         Route::get('/employees/{employee}', [EmployeeController::class, 'show'])->whereNumber('employee')->name('employees.show');
     });
