@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\AuditFindingController;
+use App\Http\Controllers\AuditorTokenController;
 use App\Http\Controllers\ComplianceHistoryController;
 use App\Http\Controllers\CredentialDocumentController;
 use App\Http\Controllers\CredentialDownloadController;
@@ -102,4 +103,10 @@ Route::middleware(['auth', 'assigned', 'can:view-notifications'])->group(functio
 Route::middleware(['auth', 'assigned', 'can:view-reports'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/download', [ReportController::class, 'show'])->name('reports.download');
+});
+
+Route::middleware(['auth', 'can:manage-users'])->group(function (): void {
+    Route::get('/admin/auditor-tokens', [AuditorTokenController::class, 'index'])->name('auditor-tokens.index');
+    Route::post('/admin/auditor-tokens', [AuditorTokenController::class, 'store'])->name('auditor-tokens.store');
+    Route::delete('/admin/auditor-tokens/{token}', [AuditorTokenController::class, 'destroy'])->whereNumber('token')->name('auditor-tokens.destroy');
 });

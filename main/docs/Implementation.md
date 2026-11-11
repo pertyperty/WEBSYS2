@@ -2,9 +2,9 @@
 
 ## Current status
 
-**Stage:** milestone 5 implemented; the restricted auditor API is next.
-**Last updated:** 2026-11-10.
-**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. In-app expiry alerts, immutable audit snapshots, corrective findings, and scoped CSV reports are implemented. The auditor API remains planned.
+**Stage:** milestone 6 implemented; synthetic dataset and handover remain in milestone 7.
+**Last updated:** 2026-11-11.
+**Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. In-app expiry alerts, immutable audit snapshots, corrective findings, and scoped CSV reports are implemented. The restricted auditor API and Admin token management are implemented.
 
 The full scope is in [System specification](System-Proposal.md), decisions and local service needs in [Development decisions](Development-Decisions.md), and the next-session brief in [Kickstart prompt](Kickstart-Prompt.md). The owner will provide the deadline and team experience later; no delivery date is promised.
 
@@ -83,12 +83,20 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 6 Restricted auditor API
 
-- [ ] Install/configure Sanctum compatibly with the chosen framework; separate API routes/controllers/resources.
-- [ ] Add Admin token provisioning/revocation, expiry, API-only accounts, abilities, regional scoping, and throttling.
-- [ ] Implement `GET /api/v1/verifications/{reference}` and the documented minimal response.
-- [ ] Add example requests with placeholders and tests for 200/401/403/404/429, revocation, expiry, and sensitive-field exclusion.
+- [x] Install/configure Sanctum compatibly with the chosen framework; separate API routes/controllers/resources.
+- [x] Add Admin token provisioning/revocation, expiry, API-only accounts, abilities, regional scoping, and throttling.
+- [x] Implement `GET /api/v1/verifications/{reference}` and the documented minimal response.
+- [x] Add example requests with placeholders and tests for 200/401/403/404/429, revocation, expiry, and sensitive-field exclusion.
 
 **Acceptance:** an auditor can verify only assigned-region evidence; tokens do not grant browser or private-file access. A reference describes its submission rather than employee-wide eligibility.
+
+**Milestone 6 evidence:** 241 tests / 1,778 assertions passed against isolated MySQL, including 41 new tests / 321 assertions. Sanctum 4.4.0 was explicitly approved and installed without other package updates. Three additive development migrations preserved records and backfilled opaque employee references. Pint, strict Composer validation, and Vite build passed. The local Herd anonymous request returned 401 JSON with the IP limiter header. Authenticated API behavior is established by tests with real hashed tokens; no development token was issued for screenshots.
+
+**Defense walkthrough:** [API routes](../routes/api.php) use pre-authentication IP limiting, Sanctum, explicit auditor checks, and an account limiter. [EnsureAuditorToken](../app/Http/Middleware/EnsureAuditorToken.php) separates identity, literal ability, active account/region, and pinned-region checks. [VerificationController](../app/Http/Controllers/Api/V1/VerificationController.php) scopes current active Staff assignments before lookup. [VerifyCredentialReference](../app/Actions/VerifyCredentialReference.php) evaluates the requested submission through the shared predicate; [VerificationResource](../app/Http/Resources/VerificationResource.php) allows nine safe fields only. The review timestamp comes from the latest review event. An older valid approval is never substituted for a pending reference.
+
+[IssueAuditorToken](../app/Actions/IssueAuditorToken.php) locks/rechecks the account, grants one ability, pins its region, and stores the next Manila midnight as an exclusive UTC expiry cutoff. The Sanctum callback requires expiry strictly in the future. The controller returns plaintext once directly, without flash/session storage. Assignment changes lock the account and revoke tokens on role/region change or deactivation; numeric form IDs are normalized so unchanged assignments preserve tokens. The IP limiter wraps Laravel throttling before authentication because Laravel normally prioritizes route authentication ahead of throttling. Limits are 120/minute/IP and 60/minute/account across tokens.
+
+**Browser review:** Administrator Auditor access was inspected at 1280×800 and 390×844. The empty state explains the required regional account assignment and links to account management. No page-level horizontal overflow was measured. With no eligible auditor or issued token present, populated issuance/list behavior remains covered by HTTP tests rather than a browser walkthrough. GitHub's official static token screenshot was compared with CheckPoint's actual captures; no authenticated GitHub or native mobile session is claimed. See [reference observations](Development-Decisions.md#auditor-api-and-access-review).
 
 ### 7 Full demonstration and handover
 

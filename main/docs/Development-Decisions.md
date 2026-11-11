@@ -43,7 +43,7 @@ The owner will provide deadline and team experience later. No instructor-require
 | Mail log | Local password-reset demonstration | Use `MAIL_MAILER=log`; reset links stay on the local machine and are not sent to real addresses. |
 | Session/cache/notification storage | Authentication and in-app alerts | Laravel database-backed drivers and database notifications are sufficient. No Redis or separate message broker is needed. |
 | Git and GitHub | Version control and PR review | Origin is `pertyperty/WEBSYS2`; Git works. GitHub CLI is not on PATH; a connected GitHub tool can create PRs. |
-| PHPUnit and Pint | Tests and formatting | Installed and checked. PHPUnit is the agreed test framework. Sanctum is deferred to the auditor API milestone. |
+| PHPUnit and Pint | Tests and formatting | Installed and checked. PHPUnit is the agreed test framework. Sanctum 4.4.0 is installed for the auditor API with explicit owner approval. |
 | Fortify and Boost | Authentication and development guidance | Fortify 1.41 provides session authentication with custom Blade views. The Laravel scaffold's agent instructions required Boost; it is a development-only dependency, with local generated skills ignored by Git. |
 
 No Docker, cloud host, paid API, AI API, antivirus service, or dedicated queue worker is required for the local baseline. Add a service only for a specific accepted need. Use synthetic credentials and employees for demonstrations.
@@ -54,7 +54,19 @@ One coding agent working with the team is sufficient. Repository reading/editing
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-The owner authorized development and asked to learn the API as it is implemented. The foundation, organization/qualification, training, private credential, and compliance/dashboard/history milestones are implemented and tested; the main Herd/MySQL setup is verified, with administrator creation and the interactive walkthrough remaining. Follow [API learning path](API-Learning-Path.md) alongside development. The auditor endpoint itself remains milestone 6.
+The owner authorized development and asked to learn the API as it is implemented. Milestones 0–6 are implemented and tested; synthetic dataset and handover remain. Follow [API learning path](API-Learning-Path.md) for runnable private requests and a defense walkthrough. Herd/MySQL is configured with separate development/test accounts.
+
+## Auditor API and access review
+
+On 2026-11-11 the owner explicitly approved Sanctum 4.4. Installed version: 4.4.0, constrained to `~4.4.0`; Composer added one package without updating other packages. No other dependency or paid service was added. CheckPoint provides the API; no insurer account/key is required.
+
+Policy defaults: active Auditor and active region, literal `verification:read` ability, required strict future expiry, token region pinned at issuance, and current active Staff/facility/region lookup. Browser sessions and wildcard-only abilities are rejected. Admin selects expiry today through 90 days ahead, default 30 days; the full chosen Manila date is stored as the next midnight in UTC, exclusive. Role/region changes and deactivation revoke tokens. Limits are 120/minute/IP before authentication and 60/minute/account shared across tokens. The response verifies one submission through the shared predicate, not whole-job eligibility, and allows only nine explicit fields. Plaintext is returned once directly without session flash; screenshots never require token creation.
+
+Reference: [GitHub's official personal access token guide](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) documents recognizable naming, expiration, resource scope, minimum permissions, and revocation. Its [official token screenshot](https://docs.github.com/assets/cb-17251/images/help/settings/personal-access-tokens.png) is a static reference, not an authenticated account session. CheckPoint follows explicit name/expiry and one-time private delivery, while selecting the region through the account instead of exposing a broad permission editor. Its simpler Admin page pairs token metadata/revocation with issuance and explains missing account setup.
+
+Actual CheckPoint captures at 1280×800 and 390×844 show the empty token list and account-assignment prerequisite. Desktop uses a list/form split; mobile stacks the sections and exposes navigation through its labeled menu button. Both measured document widths match their viewport widths. No eligible Auditor was present, so the browser review did not exercise the populated form, token list, or one-time plaintext page. HTTP tests cover those states. No tokens/accounts were created for screenshots. The static GitHub reference cannot establish GitHub's mobile behavior or authorization implementation; CheckPoint's mobile check is viewport emulation, not a physical-device test.
+
+Postman API engineering/documentation/testing guidance informed the local contract and learning examples. No Postman workspace was initialized or collection published/run. PHPUnit real hashed-token tests establish authenticated behavior; a live Herd anonymous request establishes 401 JSON and pre-authentication rate headers only. Full isolated MySQL suite: 241 tests / 1,778 assertions.
 
 The code must be explainable during the defense: use focused resource controllers, Form Requests, explicit relationships and Gates, and one reusable employee visibility scope. The code walkthrough and demonstration questions are maintained in [Implementation](Implementation.md#code-walkthrough-for-the-defense).
 

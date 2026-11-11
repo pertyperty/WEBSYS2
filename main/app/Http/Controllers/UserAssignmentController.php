@@ -37,11 +37,16 @@ class UserAssignmentController extends Controller
         DB::transaction(function () use ($user, $request, $history): void {
             $locked = User::lockForUpdate()->findOrFail($user->id);
             $wasStaff = $locked->role === UserRole::Staff;
+            $oldRole = $locked->role;
+            $oldRegion = $locked->region_id;
             $locked->forceFill(array_merge([
                 'facility_id' => null,
                 'job_role_id' => null,
                 'region_id' => null,
             ], $request->validated()))->save();
+            if (! $locked->is_active || $oldRole !== $locked->role || (int) $oldRegion !== (int) $locked->region_id) {
+                $locked->tokens()->delete();
+            }
             if ($wasStaff || $locked->role === UserRole::Staff) {
                 $history->handle($locked, 'assignment', $request->user());
             }

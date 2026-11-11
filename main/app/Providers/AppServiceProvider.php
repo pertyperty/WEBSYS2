@@ -4,11 +4,16 @@ namespace App\Providers;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View as ViewInstance;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -46,6 +51,10 @@ class AppServiceProvider extends ServiceProvider
                 ->whereIn('data->employee_id', User::visibleTo($user)->select('id'))->count() : 0;
             $view->with('unreadAlertCount', $count);
         });
+        Sanctum::authenticateAccessTokensUsing(fn (PersonalAccessToken $token, bool $valid): bool => $valid
+            && $token->expires_at !== null && $token->expires_at->isFuture());
+        RateLimiter::for('api-ip', fn (Request $request): Limit => Limit::perMinute(120)->by($request->ip()));
+        RateLimiter::for('verifications', fn (Request $request): Limit => Limit::perMinute(60)->by((string) $request->user()->id));
         Password::defaults(fn (): Password => Password::min(12)->letters()->numbers());
     }
 }

@@ -1,6 +1,6 @@
 # CheckPoint
 
-CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. In-app expiry alerts, fixed audit snapshots, corrective work, and scoped CSV reports are implemented. The restricted auditor API is next.
+CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. In-app expiry alerts, fixed audit snapshots, corrective work, and scoped CSV reports are implemented. The restricted auditor API and Admin token management are implemented.
 
 ## Available now
 
@@ -17,6 +17,7 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Daily Manila-time reconciliation and deduplicated staff/manager expiry alerts, with live status calculated even when scheduling stops.
 - Officer-captured facility/regional audits, fixed readiness snapshots, assigned corrective work, officer verification, and retained activity.
 - Scoped readiness, expiry, training, and findings reports with CSV downloads protected against spreadsheet formulas.
+- Regional, read-only auditor verification with Sanctum 4.4, opaque references, explicit ability checks, expiry/revocation, and rate limits; Admin manages Auditor access.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -63,9 +64,11 @@ The default local disk is `storage/app/private`. Do not expose it through a publ
 4. Refresh the staff dashboard. It shows its assignment and live compliance totals. With required evidence missing, the employee is not eligible; a job with no requirements is not assessable.
 5. Try a password reset and profile/password change. Staff must not be able to open `/admin/users` or assign their own role.
 
-Organization and qualification configuration is available through the navigation. Directors/managers can browse their scoped employee directory; staff can view only their own requirements. Dashboard, qualification matrix, employee assessments, and assessment history use the same current employee scope. Auditor accounts are blocked from browser login; their API will be implemented later.
+Organization and qualification configuration is available through the navigation. Directors/managers can browse their scoped employee directory; staff can view only their own requirements. Dashboard, qualification matrix, employee assessments, and assessment history use the same current employee scope. Auditor accounts are blocked from browser login; their access uses only the regional bearer-token API.
 
 ## Checks
+
+After pulling the auditor API changes, run `composer install`, `php artisan migrate`, and `npm run build` from `main/`. Additive migrations preserve existing records and generate opaque employee references. Keep your existing private environment files.
 
 Run these commands from `main/`:
 
@@ -79,7 +82,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **200 tests and 1,457 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **241 tests and 1,778 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -90,7 +93,7 @@ Run commands from `main/`. After pulling this milestone, run `php artisan migrat
 3. Register a Staff account and assign its facility/job as Admin. Open **Employees** to inspect its inherited requirements. Requirements do not award a qualification or indicate eligibility.
 4. Sign in with facility manager/regional director accounts assigned through **Accounts**. They see only employees in their facility/region. A changed employee ID outside that scope returns 404. Staff see only themselves; unassigned Staff remain on onboarding.
 5. Try deactivating an assigned facility/job or a required qualification. Validation explains the dependency to resolve. A facility cannot move regions while accounts are assigned. Records are retained and may be reactivated; there are no delete actions.
-6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Continue with the compliance walkthrough below; the auditor API remains a future milestone.
+6. Explain the implementation using the [code walkthrough and defense questions](main/docs/Implementation.md#code-walkthrough-for-the-defense). Continue with the compliance walkthrough below; the auditor API walkthrough is below.
 
 
 ## Training walkthrough
@@ -145,7 +148,7 @@ Evidence is valid through its expiry date in Asia/Manila. Warnings include today
 | [API learning path](main/docs/API-Learning-Path.md) | Learn routes, JSON, Sanctum, abilities, scope, and API tests as we build |
 | [Co-developer kickoff](main/docs/Kickstart-Prompt.md) | Original development brief; consult progress before continuing |
 
-CheckPoint will **provide** an API consumed by third-party auditors. That API is not implemented in this foundation. We will explain and exercise it incrementally during its milestone, using placeholder tokens in shared examples.
+CheckPoint will **provide** an API consumed by third-party auditors. The versioned API is implemented. Follow the learning path for private requests, errors, scope checks, and revocation; shared examples use placeholder tokens.
 
 To regenerate local Laravel Boost agent guidance/skills, run `php artisan boost:install --guidelines --skills --no-interaction` after configuring `.env`. Boost is a development-only tool; generated local skill folders are ignored. The Word proposal is unchanged, and `main/docs/` is retained. Deadline and team experience are still to be supplied.
 
@@ -161,3 +164,13 @@ Run `php artisan migrate` from `main/` after pulling; no data reset is required.
 5. As Admin, Officer, manager, or director, open **Reports**, select the report and optional facility/search filter, and apply. The preview shows up to 25 rows; **Download CSV** includes every matching row within the same authorization scope. Findings search uses the title; other reports search employee names. Expiry uses the same current events as alerts, independently of notification delivery. Private attachments, reviewer feedback, and corrective notes are excluded.
 
 For continuous local scheduling, keep `php artisan schedule:work` running. Production needs the normal once-per-minute `schedule:run` operating-system task. Stopping scheduling delays new alerts and date-only history entries; live readiness, expiry reports, and old-alert relevance still calculate correctly. Alerts are synchronous database writes, so no mail provider or queue worker was added.
+
+## Auditor access walkthrough
+
+1. As Admin, assign an intended account the Auditor role and an active region through **Accounts & access**. Auditor accounts cannot sign into the browser workspace.
+2. Open **Administration > Auditor access**. When access is needed, choose the auditor, enter a token name, and select expiry (default 30 days ahead, maximum 90). The selected Manila expiry date is inclusive.
+3. Store/deliver the one-time token privately. Never display it during the defense or include it in Git, screenshots, logs, or chat. Later screens show metadata and a Revoke action only.
+4. Follow the [API learning path](main/docs/API-Learning-Path.md#provision-and-test-access) to call `GET /api/v1/verifications/{reference}`. It returns nine safe fields for one submission, not whole-employee eligibility. The employee's current active facility/region determines scope. Browser sessions and wildcard-only abilities are rejected.
+5. Revoke and retry: the token returns 401. Role/region changes and deactivation also revoke tokens. Unknown/other-region references return 404. Limits are 120/minute/IP before authentication and 60/minute/account across tokens.
+
+No third-party provider account or service is required: CheckPoint provides this API. Use HTTPS before delivering bearer tokens beyond the local machine. The current browser review covered the Admin empty state on desktop/mobile; no actual auditor account/token was created. Authenticated API and populated token-management behavior are covered by tests. Milestone 7 remains: the 1,000-record synthetic dataset, full workflow review, and operational handover.

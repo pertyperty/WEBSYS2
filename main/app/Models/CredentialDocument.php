@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CredentialEventType;
 use App\Enums\CredentialStatus;
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Hidden(['private_path'])]
 class CredentialDocument extends Model
@@ -49,6 +51,27 @@ class CredentialDocument extends Model
     public function events(): HasMany
     {
         return $this->hasMany(CredentialEvent::class)->orderBy('id');
+    }
+
+    public function latestReview(): HasOne
+    {
+        return $this->hasOne(CredentialEvent::class)->ofMany(['id' => 'max'], function (Builder $query): void {
+            $query->whereIn('type', [CredentialEventType::Approved->value, CredentialEventType::Rejected->value]);
+        });
+    }
+
+    #[Scope]
+    protected function verifiableBy(Builder $query, User $auditor): Builder
+    {
+        if (! $auditor->is_active || $auditor->role !== UserRole::Auditor || ! $auditor->region_id) {
+            return $query->whereKey([]);
+        }
+
+        return $query->whereHas('employee', function (Builder $employees) use ($auditor): void {
+            $employees->where('role', UserRole::Staff)->where('is_active', true)
+                ->whereHas('facility', fn (Builder $facilities): Builder => $facilities->active()->where('region_id', $auditor->region_id)
+                    ->whereHas('region', fn (Builder $regions): Builder => $regions->active()));
+        });
     }
 
     #[Scope]

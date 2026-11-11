@@ -2,7 +2,7 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics across multiple regions and facilities. It replaces scattered attachments and spreadsheets with private evidence storage, training and qualification tracking, scoped compliance reporting, and controlled auditor verification.
 
-This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, and CSV reports are implemented. The restricted auditor API below remains planned.
+This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, and CSV reports are implemented. The restricted auditor API below is implemented.
 
 ## Architecture and boundaries
 
@@ -94,9 +94,9 @@ Send in-app database notifications to staff and their facility managers when req
 
 ## Auditor API
 
-Implement `GET /api/v1/verifications/{reference}` using Sanctum, explicit `verification:read` ability, active-account checks, regional authorization, and rate limiting. Use opaque non-sequential submission references. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens with a documented expiry; show plaintext only on creation.
+Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0, explicit `verification:read` ability, active-account checks, regional authorization, and rate limiting. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
 
-Use an API Resource with this minimal contract, finalized in implementation:
+The API Resource returns this nine-field contract:
 
 ```json
 {
@@ -108,13 +108,17 @@ Use an API Resource with this minimal contract, finalized in implementation:
     "validity": "valid",
     "issued_on": "2026-10-01",
     "expires_on": "2027-10-01",
-    "reviewed_at": "2026-10-02T02:00:00Z",
+    "reviewed_at": "2026-10-02T02:00:00.000000Z",
     "evaluated_on": "2026-11-10"
   }
 }
 ```
 
 The result describes that specific evidence submission, not employee-wide eligibility. Renewals have separate references. Return 401 for absent/invalid/expired/revoked tokens, 403 for disallowed role or missing ability, 404 for unknown/out-of-scope references, and 429 for throttling. Expose no files, names, medical details, private paths, rejection feedback, or unrelated qualifications. Examples use placeholder tokens.
+
+Only current active Staff in an active facility/region within the auditor's assigned region can be looked up. Transfers change access immediately, independently of the submission's historical facility. Tokens pin their issuance region; role/region changes or account deactivation revoke them. Browser sessions and wildcard-only abilities do not authorize the endpoint. Expiry is required and strictly future. Admin selects today through 90 days ahead (default 30); the full selected Manila date is represented by the following midnight converted to UTC as an exclusive cutoff. Limits are 120 requests/minute/IP before authentication and 60/minute/account across tokens.
+
+`valid` passes the shared evidence/date/training predicate for that submission; `expired` means approved evidence with past expiry; otherwise `not_valid`. Review time is the latest approval/rejection event. Nullable expiry/review dates are preserved. Successful verification responses use `private, no-store`. See [API learning path](API-Learning-Path.md) for private requests and defense exercises.
 
 ## Acceptance and operations
 
