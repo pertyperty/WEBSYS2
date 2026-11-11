@@ -41,7 +41,12 @@
                 </div>
             </section>
         </div>
-        @if($finding->canReceiveUpdateFrom(auth()->user()))
+        @if($finding->status === 'resolved' && ! auth()->user()->can('conduct-audits'))
+            <section class="self-start text-sm text-slate-600" aria-label="Finding status">
+                <h2 class="font-semibold text-slate-900">No further action needed</h2>
+                <p class="mt-2">This finding is resolved. A compliance officer must reopen it before further updates.</p>
+            </section>
+        @elseif($finding->canReceiveUpdateFrom(auth()->user()))
             <section class="panel self-start">
                 <h2 class="text-lg font-semibold">Update corrective work</h2>
                 <form class="mt-5 space-y-4" method="POST" action="{{ route('finding-updates.store', $finding) }}">

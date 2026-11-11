@@ -34,16 +34,17 @@
             @if($auditors->isEmpty())
                 <p class="mt-3 text-sm text-slate-600">Assign an active auditor to a region in Accounts & access first.</p>
             @else
-                <form class="mt-5 space-y-5" method="POST" action="{{ route('auditor-tokens.store') }}" x-data="{ submitting: false }" @submit="if (submitting) { $event.preventDefault(); return; } submitting = true">
+                <form class="mt-5 space-y-5" method="POST" action="{{ route('auditor-tokens.store') }}" x-data="{ submitting: false, selectedRegion: '' }" @submit="if (submitting) { $event.preventDefault(); return; } submitting = true">
                     @csrf
                     <div>
                         <label for="auditor_id" class="block text-sm font-medium">Auditor and region</label>
-                        <select class="field" id="auditor_id" name="auditor_id" required>
+                        <select class="field" id="auditor_id" name="auditor_id" required x-init="selectedRegion = $el.selectedOptions[0]?.dataset.region ?? ''" @change="selectedRegion = $event.target.selectedOptions[0]?.dataset.region ?? ''">
                             <option value="" disabled @selected(!old('auditor_id'))>Choose an auditor</option>
                             @foreach($auditors as $auditor)
-                                <option value="{{ $auditor->id }}" @selected((string) old('auditor_id') === (string) $auditor->id)>{{ $auditor->name }} - {{ $auditor->region->name }}</option>
+                                <option value="{{ $auditor->id }}" data-region="{{ $auditor->region->name }}" @selected((string) old('auditor_id') === (string) $auditor->id)>{{ $auditor->name }} - {{ $auditor->region->name }}</option>
                             @endforeach
                         </select>
+                        <p class="field-help" x-show="selectedRegion" x-cloak aria-live="polite">Verification region: <span x-text="selectedRegion"></span></p>
                     </div>
                     <x-input name="name" label="Token name" required maxlength="100" :value="old('name')" />
                     <x-input name="expires_on" label="Expiry date" type="date" required :min="now('Asia/Manila')->toDateString()" :max="now('Asia/Manila')->addDays(90)->toDateString()" :value="old('expires_on', now('Asia/Manila')->addDays(30)->toDateString())" />
