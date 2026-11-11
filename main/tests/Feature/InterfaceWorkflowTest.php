@@ -104,6 +104,25 @@ class InterfaceWorkflowTest extends TestCase
         $this->assertDatabaseCount('finding_updates', 0);
     }
 
+    public function test_manager_sees_resolved_guidance_instead_of_an_unusable_update_form(): void
+    {
+        $finding = AuditFinding::factory()->create(['status' => 'resolved']);
+
+        $this->actingAs($finding->assignee)->get(route('findings.show', $finding))->assertOk()
+            ->assertSee('A compliance officer must reopen it before further updates.')
+            ->assertDontSee('Save update')
+            ->assertDontSee('name="status"', false);
+    }
+
+    public function test_officer_keeps_the_update_form_to_reopen_resolved_findings(): void
+    {
+        $finding = AuditFinding::factory()->create(['status' => 'resolved']);
+
+        $this->actingAs($finding->audit->author)->get(route('findings.show', $finding))->assertOk()
+            ->assertSee('Reopen')->assertSee('Save update')
+            ->assertDontSee('No further action needed');
+    }
+
     private function assertControlsHaveLabels(string $html, string $url): void
     {
         $previous = libxml_use_internal_errors(true);
