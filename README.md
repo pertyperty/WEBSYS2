@@ -18,6 +18,7 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Officer-captured facility/regional audits, fixed readiness snapshots, assigned corrective work, officer verification, and retained activity.
 - Scoped readiness, expiry, training, and findings reports with CSV downloads protected against spreadsheet formulas.
 - Regional, read-only auditor verification with Sanctum 4.4, opaque references, explicit ability checks, expiry/revocation, and rate limits; Admin manages Auditor access.
+- An opt-in local synthetic dataset with 1,690 related records, harmless downloadable evidence, all six roles, and a joined HTTP workflow test.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -50,7 +51,7 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates all 18 Philippine regions, one fictional hub per region based on real logistics locations, two jobs, two safety domains, two training-required qualifications linked to those jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The 1,000-record dataset is a later milestone. Do not use `migrate:fresh` on development data.
+The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates all 18 Philippine regions, one fictional hub per region based on real logistics locations, two jobs, two safety domains, two training-required qualifications linked to those jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The optional synthetic dataset command below adds the classroom records separately. Do not use `migrate:fresh` on development data.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
@@ -82,7 +83,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **241 tests and 1,778 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **249 tests and 1,928 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -173,4 +174,43 @@ For continuous local scheduling, keep `php artisan schedule:work` running. Produ
 4. Follow the [API learning path](main/docs/API-Learning-Path.md#provision-and-test-access) to call `GET /api/v1/verifications/{reference}`. It returns nine safe fields for one submission, not whole-employee eligibility. The employee's current active facility/region determines scope. Browser sessions and wildcard-only abilities are rejected.
 5. Revoke and retry: the token returns 401. Role/region changes and deactivation also revoke tokens. Unknown/other-region references return 404. Limits are 120/minute/IP before authentication and 60/minute/account across tokens.
 
-No third-party provider account or service is required: CheckPoint provides this API. Use HTTPS before delivering bearer tokens beyond the local machine. The current browser review covered the Admin empty state on desktop/mobile; no actual auditor account/token was created. Authenticated API and populated token-management behavior are covered by tests. Milestone 7 remains: the 1,000-record synthetic dataset, full workflow review, and operational handover.
+No third-party provider account or service is required: CheckPoint provides this API. Use HTTPS before delivering bearer tokens beyond the local machine. The current browser review covered the Admin empty state on desktop/mobile; no actual auditor account/token was created. Authenticated API and populated token-management behavior are covered by tests. The synthetic dataset and handover guide are available below; remaining human workflow and restore checks are recorded explicitly.
+
+## Synthetic classroom dataset
+
+After the normal setup above, run this **interactively** from `main/`:
+
+```powershell
+php artisan checkpoint:seed-synthetic
+```
+
+Enter and confirm a private password for the fictional accounts. There is no default password or password argument. The command is restricted to local/testing and is separate from normal seeding/deployment. It appends 1,690 related records on the baseline, with all roles, eight evidence scenarios, no-requirement/onboarding states, audits, corrective history, and expiry alerts. All 270 evidence submissions download the same harmless image marked **Synthetic evidence — Not a certificate**. No real employee/medical data or API token is generated.
+
+Use `admin@checkpoint.example`, `officer@checkpoint.example`, and scoped `manager.01@checkpoint.example` / `director.01@checkpoint.example` accounts with the password you entered. Auditor accounts remain API-only. The [full account/scenario guide and per-table counts](main/docs/Implementation.md#synthetic-dataset-and-classroom-walkthrough) explain all addresses, scope numbering, and the defense walkthrough. Dates are relative to creation and age normally.
+
+The command requires 18 active regional facility scopes. It preserves existing records/configuration and refuses to rerun or reuse conflicting reserved addresses/catalog names; it never resets used sample accounts or histories. Test execution verified the counts and rollback on isolated MySQL. The development database is unchanged until you run the interactive command privately.
+
+## Backup and restore rehearsal
+
+Back up the database, private evidence, and application key together. Keep backups outside this repository with restricted access. A SQL dump alone does not contain uploaded files; a file archive alone cannot recreate assignments and history. Before an actual backup, stop the local scheduler/other writers, run `php artisan down`, and wait for active requests to finish. Resume with `php artisan up` only after backup succeeds or after resolving a failed attempt.
+
+With MySQL 8 tools available on PATH, run from `main/` (the database password is prompted privately):
+
+```powershell
+$checkpointBackupRoot = Join-Path $env:USERPROFILE ('CheckPointBackups\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+New-Item -ItemType Directory -Path $checkpointBackupRoot -ErrorAction Stop | Out-Null
+mysqldump.exe --host=127.0.0.1 --port=3306 --user=checkpoint --password --single-transaction --no-tablespaces --set-gtid-purged=OFF --result-file="$checkpointBackupRoot\checkpoint.sql" checkpoint
+if ($LASTEXITCODE -ne 0) { throw 'Database backup failed; do not treat this folder as a complete backup.' }
+Compress-Archive -LiteralPath storage/app/private -DestinationPath "$checkpointBackupRoot\private-files.zip" -ErrorAction Stop
+Copy-Item -LiteralPath .env -Destination "$checkpointBackupRoot\.env" -ErrorAction Stop
+git rev-parse HEAD | Set-Content -LiteralPath "$checkpointBackupRoot\commit.txt" -ErrorAction Stop
+php artisan up
+```
+
+Do not send or commit the backup folder: it contains credentials, reset/session data, and private files. Confirm that the SQL dump and archive exist and are nonempty; record the dependency lockfiles/commit used. If the client cannot connect, fix the MySQL tools/account privately rather than pasting credentials. This is a documented procedure, not a backup or restore already performed on your machine.
+
+Rehearse recovery into a **new local database and separate checkout/site**. Create a least-privilege account for that new database through your private MySQL administrator client. Use MySQL Workbench's Data Import to import `checkpoint.sql` into that empty schema. Extract `private-files.zip` outside the active app and copy its `private` directory into the recovery checkout's `storage/app/private`. Restore the saved `.env` privately, retain its original `APP_KEY`, and change the database credentials/APP_URL to the recovery environment; do not point at the active or test database.
+
+Install the recorded lockfiles, run `php artisan config:clear`, then check `php artisan migrate:status` before running any required additive migrations. Build assets and link the recovery checkout in Herd. Check login, one protected evidence download, historical audit contents, account scoping, and token revocation. Do not regenerate the application key during recovery. Enable scheduling only after those checks pass. No automatic restore or destructive reset is included.
+
+Before a real deployment, complete the remaining human workflow/restore checks, configure HTTPS and real mail delivery, set `APP_ENV=production` and `APP_DEBUG=false`, keep the synthetic accounts out of the production database, and arrange the once-per-minute scheduler plus private backups. A production deployment is a separate decision; no hosting or paid service was added here.

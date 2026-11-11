@@ -50,11 +50,21 @@ No Docker, cloud host, paid API, AI API, antivirus service, or dedicated queue w
 
 ## Co-developer workflow
 
+### Synthetic dataset and handover defaults
+
+Milestone 7 adds the opt-in `checkpoint:seed-synthetic` command, not automatic sample accounts in normal seeding. The baseline adds 1,690 related records across 18 existing active regional facility scopes, including all six roles, evidence/training states, immutable audit snapshots, corrective activity, and in-app alerts. Per-table counts are tested on isolated MySQL and recorded in [Implementation](Implementation.md#synthetic-dataset-and-classroom-walkthrough). Existing records/configuration are preserved. A reserved-address/catalog collision or repeat run stops without changes, protecting edited accounts and dated history. New dates are relative to creation and age normally. Sample histories are constructed directly; the joined HTTP test independently verifies the real workflow.
+
+All fictional accounts use reserved `checkpoint.example` addresses and a password entered privately at the terminal. No built-in password, command-line password option, production override, or automatic API token is provided. The command and underlying action both refuse environments other than local/testing. Evidence uses one private, harmless PNG explicitly labeled synthetic and not a certificate. Normal screens keep their operational wording; the fixture label prevents mistaking sample evidence for a real qualification. No new runtime dependency or service is needed.
+
+Public behavior cross-check on 2026-11-11: [Snipe-IT's official seeding guide](https://snipe-it.readme.io/docs/seeding-the-database) describes realistic sample records and explicitly warns that its seeding process overwrites data. Its [public demo page](https://snipeitapp.com/demo) describes periodic resets and limits on account/email changes. These sources support keeping demonstration setup separate from real operations. CheckPoint uses an append-only setup command with refusal on reuse because the owner needs to retain existing records. No new UI was changed in this slice; these were documentation/workflow observations, not a new screenshot comparison or an authenticated vendor test. Earlier actual interface comparisons remain recorded below.
+
+README now covers paired database/private-file/key backups and restoration into a separate checkout/database, including private password prompts and preservation of APP_KEY. This procedure is documented but not rehearsed against the owner's data. The development database was not populated automatically because choosing the classroom account password belongs to the private interactive setup. Human browser checks for populated Auditor access and Officer/Manager corrective work, local mail-log reset, and restore rehearsal remain open. Tests and fixture records alone do not prove those manual outcomes.
+
 One coding agent working with the team is sufficient. Repository reading/editing, terminal commands, Git, and GitHub PR access cover initial development. Browser automation may help exercise the app after it exists; a REST client or curl is sufficient for the API demonstration. Specialized agents and additional plugins are optional, not prerequisites.
 
 Use a branch and PR for each coherent milestone. Implement authorization, validation, and focused tests with each workflow. Keep application secrets out of Git and chat; `.env.example` contains placeholders only. Run MySQL-backed tests against a separate test database, never a populated development database.
 
-The owner authorized development and asked to learn the API as it is implemented. Milestones 0–6 are implemented and tested; synthetic dataset and handover remain. Follow [API learning path](API-Learning-Path.md) for runnable private requests and a defense walkthrough. Herd/MySQL is configured with separate development/test accounts.
+The owner authorized development and asked to learn the API as it is implemented. Milestones 0–6 and milestone 7's dataset/handover tooling are implemented and tested; remaining human acceptance checks are recorded in Implementation.md. Follow [API learning path](API-Learning-Path.md) for runnable private requests and a defense walkthrough. Herd/MySQL is configured with separate development/test accounts.
 
 ## Auditor API and access review
 

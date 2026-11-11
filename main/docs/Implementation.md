@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Stage:** milestone 6 implemented; synthetic dataset and handover remain in milestone 7.
+**Stage:** milestone 7 dataset command, joined HTTP workflow, and handover guide implemented; private local setup and remaining human walkthroughs are listed below.
 **Last updated:** 2026-11-11.
 **Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. In-app expiry alerts, immutable audit snapshots, corrective findings, and scoped CSV reports are implemented. The restricted auditor API and Admin token management are implemented.
 
@@ -100,14 +100,70 @@ Each milestone is a coherent PR with its own validation and documentation update
 
 ### 7 Full demonstration and handover
 
-- [ ] Seed at least 1,000 total synthetic records with valid relationships and all important states; record counts by table.
-- [ ] Provide harmless evidence fixtures or explicit unavailable-file states and development-only demo accounts for each role/scope.
-- [ ] Run full PHPUnit tests on MySQL, Pint, and production asset build; record exact commands/results.
-- [ ] Exercise register -> assign -> enroll -> complete -> submit -> review -> assess -> audit/report -> API verification.
+- [x] Seed at least 1,000 total synthetic records with valid relationships and all important states; record counts by table (1,690 added records verified on isolated MySQL).
+- [x] Provide harmless evidence fixtures and an opt-in development command for accounts covering each role/scope; no shipped password or automatic token creation.
+- [x] Run full PHPUnit tests on MySQL, Pint, and production asset build; record exact commands/results.
+- [x] Exercise register -> assign -> enroll -> complete -> submit -> review -> assess -> audit/report -> API verification through joined HTTP tests. The full human browser walkthrough remains open.
 - [ ] Verify notification delivery, password reset logs, unauthorized access, and snapshot/history retention.
-- [ ] Document fresh setup, scheduler, test-database isolation, backup/restore of MySQL and private files, limitations, and demo script.
+- [x] Document fresh setup, scheduler, test-database isolation, backup/restore of MySQL and private files, limitations, and classroom walkthrough.
 
 **Acceptance:** a teammate can reproduce the demo from a fresh checkout; all eight mandatory requirements below have implemented evidence. Do not mark these tasks complete based on documentation alone.
+
+**Milestone 7 validation (2026-11-11):** `php artisan test --compact` passed **249 tests / 1,928 assertions** on isolated MySQL `checkpoint_test`, including 8 new tests / 150 assertions. `php vendor/bin/pint --dirty --format agent`, `npm run build`, `node --test tests/forms.test.js` (8 tests), strict Composer validation, Blade compilation/clear, command discovery, schedule inspection, Markdown local links/fences, and Git whitespace checks passed. No dependencies or migrations were added. No reset, synthetic account creation, or token issuance was run on the development database. Remote CI and the remaining human walkthroughs are not established by these local results.
+
+### Synthetic dataset and classroom walkthrough
+
+From `main/`, after normal setup and organization seeding, run `php artisan checkpoint:seed-synthetic` interactively. Enter and confirm a private password (12+ characters with letters and numbers). All synthetic accounts share that chosen classroom password. No password is committed, printed, accepted as a command argument, or sent to chat. The command is restricted to `local`/`testing`; it is deliberately absent from `DatabaseSeeder`, normal migrations, and deployment scripts. Do not install these accounts in a real deployment.
+
+[CreateSyntheticDataset](../app/Actions/CreateSyntheticDataset.php) creates fictional relational history in one transaction, then uses the existing selection, assessment/history, alert, and audit actions. Sample submission/review and finding activity rows are built directly as fixture history; this does not claim they were entered through the UI. [CompleteComplianceWorkflowTest](../tests/Feature/CompleteComplianceWorkflowTest.php) separately exercises actual HTTP writes across the modules. All evidence points to a working private copy of the [harmless PNG](../database/fixtures/synthetic-evidence.png), visibly labeled synthetic and not a certificate. A failed run rolls back its database writes and removes its new file. It does not remove existing files.
+
+The command requires active facilities in 18 distinct active regions and chooses the lowest-ID active facility per region, ordered by region ID. It never changes existing organization configuration. Reserved `@checkpoint.example` addresses or either synthetic job/domain name cause a refusal before writes; rerunning cannot reset passwords, reopen reviews, change dates, or duplicate the dataset. Existing edited records remain intact. Use a separate empty local database for a new baseline, rather than deleting a used dataset. Concurrent invocations are not supported; run setup once from one terminal.
+
+Exact added counts on isolated MySQL (not counting the existing regions/facilities or framework tables):
+
+| Table | Added |
+|---|---:|
+| users | 220 |
+| safety_domains | 1 |
+| job_roles | 2 |
+| qualifications | 2 |
+| job_role_qualification | 2 |
+| training_courses | 3 |
+| employee_trainings | 144 |
+| credential_documents | 270 |
+| credential_events | 468 |
+| employee_qualification | 144 |
+| compliance_assessments | 164 |
+| audits | 18 |
+| audit_findings | 72 |
+| finding_updates | 108 |
+| notifications | 72 |
+| **Total** | **1,690** |
+
+These counts are for a fresh fixture baseline with no additional existing facility managers. Additional real local managers in the chosen facilities may receive the normal expiry alerts, so the command reports actual added counts rather than hard-coding the total. It creates zero API tokens. The default organization seeder's records are additional to this count. Dates are relative to the day of creation in Asia/Manila; statuses age normally and are never reset on rerun.
+
+| Account address | Purpose |
+|---|---|
+| `admin@checkpoint.example` | Administrator for configuration and token management |
+| `officer@checkpoint.example` | Officer for evidence review, completion, audits, and verification |
+| `manager.NN@checkpoint.example` | Manager of the selected facility in scope NN |
+| `director.NN@checkpoint.example` | Director of that region |
+| `auditor.NN@checkpoint.example` | API-only Auditor of that region; no token issued |
+| `staff.NN.SCENARIO@checkpoint.example` | Staff scenario in that facility |
+| `unassigned@checkpoint.example` | Onboarding without employee access |
+| `inactive@checkpoint.example` | Disabled account, rejected by browser login |
+
+NN is `01` through `18` in region-ID order, not the Philippine region number. Inspect each account's assignment in Accounts & access. With only the normal organization seed, 01 is NCR and 05 is Central Luzon. SCENARIO is `current`, `expiring`, `expired`, `pending`, `rejected`, `missing`, `incomplete`, `renewal`, or `observer`. The first eight require Cold Chain Handling (completed training plus expiring evidence) and non-expiring Workplace Safety Orientation. The observer job has no requirements and is not assessable.
+
+1. Sign in as Staff current/expiring/renewal: each starts eligible. Expiring evidence expires 15 days after creation. Renewal retains an older approved document and a separate pending reference.
+2. Compare expired/pending/rejected/missing/incomplete: each starts not eligible for a different reason. Incomplete has an enrolled course, pending training evidence, and approved non-training orientation. Completion alone does not make the pending evidence valid.
+3. As Officer, complete the incomplete enrollment with today's date, review its pending evidence, and inspect the resulting history. Start new uploads for rejected/expired renewals; never overwrite historical files or decisions.
+4. As Manager, inspect the four corrective findings in the assigned facility, update open/in-progress work, and submit it. As Officer, verify separately. Existing resolved work retains manager and officer activity. Compare a different region as Director/Manager to demonstrate denied scope.
+5. Inspect Reports and download CSV. Run reconciliation twice; unchanged state adds neither duplicate history nor duplicate alerts. Explain that live status still calculates when scheduling stops.
+6. Follow [API learning path](API-Learning-Path.md): privately issue an expiring token only when needed, compare approved/pending references, try another region, then revoke. Never project a token.
+7. Register a fresh account, assign it, enroll, complete, upload the harmless fixture, and review it through the real UI to demonstrate the entire user journey rather than only prebuilt history.
+
+The dataset is verified in disposable `checkpoint_test`; it has not been added to the owner's development database automatically. Run the interactive command privately when ready. Remaining human checks: complete populated token issuance/revocation walkthrough, Officer/Manager corrective-work desktop/mobile walkthrough, actual local mail-log password reset, and restore rehearsal into a separate database. Existing auth tests verify reset notification/token behavior; they do not establish delivery through local mail logs. No new interface changes or browser screenshots are claimed for this milestone.
 
 ## Mandatory requirement traceability
 
@@ -198,7 +254,7 @@ Defend the failure boundaries: a database transaction cannot roll back a filesys
 
 `CredentialSubmissionTest` uses real test-mode uploaded files for content cases. Laravel's upload fake normally derives MIME from the supplied name; relying on that fake would miss renamed script payloads. Tests also cover JPEG/PNG bytes, file-size limits, failed writes, rollback cleanup preserving old evidence, transfer context, role/ownership denial, safe attachment headers, stale decisions, incomplete training, pending renewals, non-expiring qualifications, and the Manila midnight expiry boundary. Tests use a fake disk and the dedicated MySQL test database; no private demonstration uploads are reset.
 
-Content-based MIME checks are not antivirus scanning or full PDF parsing. Downloads are attachments on authenticated routes, not inline public URLs. Backups and the final demonstration dataset remain milestone 7 work; no nonexistent seeded evidence is presented as a working download.
+Content-based MIME checks are not antivirus scanning or full PDF parsing. Downloads are attachments on authenticated routes, not inline public URLs. The milestone 7 command supplies a working harmless PNG for all sample evidence. Backup/restore guidance is in README; an actual restore rehearsal remains a human check.
 
 ## Compliance calculation and history defense walkthrough
 

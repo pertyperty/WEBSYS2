@@ -68,6 +68,8 @@ The four CSV downloads are authenticated web responses under `/reports/download`
 
 ## Provision and test access
 
+For a local classroom baseline, the optional `php artisan checkpoint:seed-synthetic` command creates `admin@checkpoint.example`, `auditor.01@checkpoint.example`, and Staff evidence scenarios using a password entered privately. It creates **no tokens**. See the [scenario walkthrough](Implementation.md#synthetic-dataset-and-classroom-walkthrough). Scope 01 is the first region by database ID, not an official region number. Use Accounts & access to confirm the assignment and Credentials to obtain a submission reference. Compare `staff.01.current@checkpoint.example` with the two references under `staff.01.renewal@checkpoint.example`; a pending renewal is not valid while the prior approval remains valid. Never project or commit the privately issued bearer value.
+
 1. Let the intended auditor register. As Admin, use **Accounts & access** to assign the Auditor role and an active region. The Auditor cannot sign into the browser workspace.
 2. Open **Administration > Auditor access**, select the auditor, enter a recognizable name, and choose expiry. Default: 30 days ahead; allowed dates: today through 90 days ahead.
 3. Issue only when needed. Plaintext appears once in a direct no-store/no-referrer response, never session flash. Deliver it privately. Later screens show metadata only.
@@ -103,4 +105,4 @@ From `main/`, run the real hashed-token tests against `checkpoint_test`:
 php artisan test --compact tests/Feature/CredentialVerificationTest.php tests/Feature/AuditorApiTest.php tests/Feature/AuditorTokenManagementTest.php
 ```
 
-For the defense, compare an older valid approval and its pending renewal: their references return different results. Try another region (404), revoke and retry (401). Never project a token. The full suite passed 241 tests / 1,778 assertions.
+For the defense, compare an older valid approval and its pending renewal: their references return different results. Try another region (404), revoke and retry (401). Never project a token. The full suite passed 249 tests / 1,928 assertions.
