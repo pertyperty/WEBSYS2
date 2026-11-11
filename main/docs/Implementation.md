@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Stage:** milestone 7 dataset command, joined HTTP workflow, and handover guide implemented; private local setup and remaining human walkthroughs are listed below.
+**Stage:** milestone 7 tooling and operational checks implemented; local synthetic dataset loaded; remaining human walkthroughs are listed below.
 **Last updated:** 2026-11-11.
 **Application status:** Authentication/onboarding, Admin organization and qualification management, job requirements, scoped employee pages, safe deactivation, private-storage configuration, and MySQL tests are implemented. Courses, enrollment, completion, and scoped training progress are implemented. Private submissions, protected downloads, review events, and effective-evidence selection are implemented. Live compliance calculations, scoped dashboards/matrix, material assessment history, and daily history reconciliation are implemented. In-app expiry alerts, immutable audit snapshots, corrective findings, and scoped CSV reports are implemented. The restricted auditor API and Admin token management are implemented.
 
@@ -163,7 +163,11 @@ NN is `01` through `18` in region-ID order, not the Philippine region number. In
 6. Follow [API learning path](API-Learning-Path.md): privately issue an expiring token only when needed, compare approved/pending references, try another region, then revoke. Never project a token.
 7. Register a fresh account, assign it, enroll, complete, upload the harmless fixture, and review it through the real UI to demonstrate the entire user journey rather than only prebuilt history.
 
-The dataset is verified in disposable `checkpoint_test`; it has not been added to the owner's development database automatically. Run the interactive command privately when ready. Remaining human checks: populated token issuance/revocation walkthrough, Officer/Manager corrective-work desktop/mobile walkthrough, password reset in the user's local browser, and restoration into a separate checkout/database from an actual retained backup. Real log-mail delivery and MySQL/private-file round-trip recovery are now exercised by the operational tests below. No new interface changes or browser screenshots are claimed for these operational changes.
+The dataset was first verified in disposable `checkpoint_test`, then added to the owner's local `checkpoint` database on 2026-11-11 using privately supplied password input. The command reported 1,690 additions; read-only inventory confirmed 223 accounts (the original three plus 220 fictional accounts), 270 submissions, 468 credential events, 144 enrollment records, 18 audits, 72 findings, 108 finding updates, and 72 notifications. Existing assessment history remains alongside 164 added snapshots. Original organization records/accounts were preserved; zero API tokens exist. The one-use private input file was removed after setup, and no password was printed or committed. Do not rerun the dataset command in this checkout.
+
+Remaining human checks: populated token-screen review, Officer/Manager corrective-work desktop/mobile walkthrough, password reset in the user's local browser, and restoration into a separate checkout/database from an actual retained backup. Real log-mail delivery and MySQL/private-file round-trip recovery are exercised by the operational tests below. No new interface changes or browser screenshots are claimed for the local setup operation.
+
+**PR finalization:** at the owner's request, PRs #15, #16, #17, and #19 were marked ready for review after checking their current heads were mergeable, their Foundation checks runs succeeded, and their discussion timelines/review threads had no feedback to address. They remain open in dependency order #15 → #16 → #17 → #19. Readiness is distinct from completing the remaining manual acceptance or deploying the system. The individual PR descriptions retain those limits.
 
 ### Operational acceptance and restore defense
 
