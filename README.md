@@ -83,7 +83,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **249 tests and 1,928 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **254 tests and 2,011 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -207,10 +207,36 @@ git rev-parse HEAD | Set-Content -LiteralPath "$checkpointBackupRoot\commit.txt"
 php artisan up
 ```
 
-Do not send or commit the backup folder: it contains credentials, reset/session data, and private files. Confirm that the SQL dump and archive exist and are nonempty; record the dependency lockfiles/commit used. If the client cannot connect, fix the MySQL tools/account privately rather than pasting credentials. This is a documented procedure, not a backup or restore already performed on your machine.
+Do not send or commit the backup folder: it contains credentials, reset/session data, and private files. Confirm that the SQL dump and archive exist and are nonempty; record the dependency lockfiles/commit used. If the client cannot connect, fix the MySQL tools/account privately rather than pasting credentials. This procedure has not been applied to the owner's development database; the isolated automated recovery check is described below.
 
 Rehearse recovery into a **new local database and separate checkout/site**. Create a least-privilege account for that new database through your private MySQL administrator client. Use MySQL Workbench's Data Import to import `checkpoint.sql` into that empty schema. Extract `private-files.zip` outside the active app and copy its `private` directory into the recovery checkout's `storage/app/private`. Restore the saved `.env` privately, retain its original `APP_KEY`, and change the database credentials/APP_URL to the recovery environment; do not point at the active or test database.
 
-Install the recorded lockfiles, run `php artisan config:clear`, then check `php artisan migrate:status` before running any required additive migrations. Build assets and link the recovery checkout in Herd. Check login, one protected evidence download, historical audit contents, account scoping, and token revocation. Do not regenerate the application key during recovery. Enable scheduling only after those checks pass. No automatic restore or destructive reset is included.
+Install the recorded lockfiles, run `php artisan config:clear`, and keep the recovered checkout in maintenance mode with `php artisan down --no-interaction`. Check `php artisan migrate:status` before running any required additive migrations. Build assets and link the recovery checkout in Herd. Do not regenerate the application key during recovery.
+
+Restoration brings authentication records back to their state at backup time. In particular, a token revoked **after** the backup can be restored as valid. Before reopening the recovered instance, stop other writers and run this **in the recovered checkout**, after verifying its database settings privately:
+
+```powershell
+php artisan checkpoint:invalidate-restored-access --no-interaction
+```
+
+This command requires maintenance mode and the database session driver. In one transaction it clears sessions, remembered-login tokens, password-reset links, and Sanctum tokens. It preserves accounts, password hashes, assignments, evidence, and history. Users must sign in again; auditors need newly issued tokens. Review account/role/password changes made since the backup before reopening, since those also revert to the snapshot. The command has been tested only on `checkpoint_test` and was not run on the active development app.
+
+When ready for controlled local checks, run `php artisan up --no-interaction` in the recovered checkout. Check a fresh login, one protected evidence download, historical audit contents, account scoping, and rejection of old tokens. Enable scheduling and public traffic only after those checks pass. No automatic restore or destructive reset of the active database is included.
+
+## Operational acceptance checks
+
+The log-mail test sends a real reset notification through Laravel's log transport to a temporary test log, reads its link privately, resets the password, and rejects reuse. It does not fake mail or send to an external provider. It does not inspect or expose existing development logs.
+
+The recovery test uses the installed MySQL 8 `mysqldump` and `mysql` clients plus PHP ZIP. It backs up committed disposable records and a private fixture, removes the test schema/file, imports/extracts the backup, and checks evidence bytes/download permissions, opaque references, review events, qualification pivots, and audit history, encrypted sessions with the same key, token snapshot behavior, and post-restore access invalidation. Test credentials are read internally from the isolated connection into a temporary client option file, never command arguments or output; temporary option files, dumps, and archives are removed afterward.
+
+From `main/`, with MySQL 8 clients on PATH and PHP ZIP enabled:
+
+```powershell
+php artisan test --compact tests/Feature/PasswordResetLogTest.php tests/Feature/InvalidateRestoredAccessTest.php tests/Feature/BackupRestoreTest.php
+```
+
+On this Windows installation, the clients are in `C:\Program Files\MySQL\MySQL Server 8.0\bin`; add that directory to PATH for the test process if needed. The `recovery` test group skips with an explicit explanation if either client or PHP ZIP is unavailable; a skipped test does not establish recovery. It uses `DatabaseMigrations` so an external dump sees committed fixtures. The existing test bootstrap and a second guard immediately before schema removal require MySQL `checkpoint_test`. Run it alone or in the normal serial suite, never concurrently with another process using that database. No development schema, accounts, logs, files, or service state are changed.
+
+These automated checks do not replace the remaining human desktop/mobile walkthroughs or a recovery rehearsal into a separate checkout/database using an actual retained backup. The local synthetic dataset still requires private interactive password entry through `checkpoint:seed-synthetic`.
 
 Before a real deployment, complete the remaining human workflow/restore checks, configure HTTPS and real mail delivery, set `APP_ENV=production` and `APP_DEBUG=false`, keep the synthetic accounts out of the production database, and arrange the once-per-minute scheduler plus private backups. A production deployment is a separate decision; no hosting or paid service was added here.

@@ -77,6 +77,8 @@ For a local classroom baseline, the optional `php artisan checkpoint:seed-synthe
 
 Expiry includes the full selected Asia/Manila date. Storage uses the next midnight converted to UTC as an exclusive cutoff. Expiry-less tokens and tokens exactly at cutoff return 401. Current employee facility/region determines lookup scope; transfers remove the old region's access. Inactive Staff/facilities are excluded.
 
+Restoring an older database also restores its token hashes. A token revoked after that backup can therefore become valid again. The [recovery instructions](../../README.md#backup-and-restore-rehearsal) require maintenance-only `checkpoint:invalidate-restored-access` before reopening: it clears restored sessions, remembered logins, reset links, and tokens. Administrators then issue fresh auditor tokens. The isolated recovery test demonstrates both snapshot behavior and subsequent invalidation; it does not issue or restore tokens in the development database.
+
 `valid` means this submission passes shared evidence/date/training rules; `expired` means approved evidence has a past expiry; otherwise `not_valid`. This is not whole-job eligibility. Review time comes from the latest approval/rejection event, not document update time. `expires_on` and `reviewed_at` may be null; timestamps are UTC, evaluated dates Manila. Successful responses use `private, no-store`.
 
 The local anonymous smoke returned 401 JSON (`Unauthenticated.`):
@@ -105,4 +107,4 @@ From `main/`, run the real hashed-token tests against `checkpoint_test`:
 php artisan test --compact tests/Feature/CredentialVerificationTest.php tests/Feature/AuditorApiTest.php tests/Feature/AuditorTokenManagementTest.php
 ```
 
-For the defense, compare an older valid approval and its pending renewal: their references return different results. Try another region (404), revoke and retry (401). Never project a token. The full suite passed 249 tests / 1,928 assertions.
+For the defense, compare an older valid approval and its pending renewal: their references return different results. Try another region (404), revoke and retry (401). Never project a token. The full suite passed 254 tests / 2,011 assertions.
