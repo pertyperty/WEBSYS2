@@ -2,7 +2,7 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics across multiple regions and facilities. It replaces scattered attachments and spreadsheets with private evidence storage, training and qualification tracking, scoped compliance reporting, and controlled auditor verification.
 
-This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, reports, and the API below remain planned.
+This specification translates the supplied `WEBSYS2-System-Proposal-CheckPoint.docx` into the scope agreed with the project owner on 2026-11-10. The Word proposal remains unchanged. See [Development decisions](Development-Decisions.md) and [Implementation plan](Implementation.md). Authentication/onboarding, organization catalogs, qualifications, job requirements, and scoped employee pages are implemented. Training courses, enrollment, completion, and scoped progress are implemented. Private evidence, protected downloads, review history, and qualifying-evidence selection are implemented. Whole-employee compliance, audits, alerts, and CSV reports are implemented. The restricted auditor API below is implemented.
 
 ## Architecture and boundaries
 
@@ -86,7 +86,7 @@ Use one service across dashboards, reports, audit snapshots, and API responses. 
 
 Provide staff self-service pages, officer review queue, administrative configuration, and facility/regional dashboards. Include eligible/non-compliant/not-assessable totals, missing evidence, pending reviews, expiring qualifications, and training progress. Dashboard denominators explicitly identify assessable staff and show not-assessable counts separately. Use scoped filters, pagination, and eager loading.
 
-Officers create audits with scope, author/date, immutable readiness snapshot, findings, due dates, and corrective actions. Managers update findings assigned to them within their facility. Historical snapshots do not change when current evidence or requirements change. Employee assessment history and audit findings remain distinct.
+Officers create audits with scope, author/date, immutable readiness snapshot, findings, due dates, and corrective actions. Managers update findings assigned to them within their facility. Historical snapshots do not change when current evidence or requirements change. Employee assessment history and audit findings remain distinct. Managers submit corrective work for officer verification; officers can reopen or reassign within the facility, retaining dated notes and assignment activity. Neither an assigned manager nor the latest corrective author may verify their own work. Captures use today's readiness; backdated capture is not supported.
 
 CSV reports cover readiness, expiry, training progress, and findings with the same authorization/filters as browser pages. Exclude private paths and medical content; neutralize cells beginning with spreadsheet formula markers. PDF exports are deferred.
 
@@ -94,9 +94,9 @@ Send in-app database notifications to staff and their facility managers when req
 
 ## Auditor API
 
-Implement `GET /api/v1/verifications/{reference}` using Sanctum, explicit `verification:read` ability, active-account checks, regional authorization, and rate limiting. Use opaque non-sequential submission references. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens with a documented expiry; show plaintext only on creation.
+Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0, explicit `verification:read` ability, active-account checks, regional authorization, and rate limiting. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
 
-Use an API Resource with this minimal contract, finalized in implementation:
+The API Resource returns this nine-field contract:
 
 ```json
 {
@@ -108,7 +108,7 @@ Use an API Resource with this minimal contract, finalized in implementation:
     "validity": "valid",
     "issued_on": "2026-10-01",
     "expires_on": "2027-10-01",
-    "reviewed_at": "2026-10-02T02:00:00Z",
+    "reviewed_at": "2026-10-02T02:00:00.000000Z",
     "evaluated_on": "2026-11-10"
   }
 }
@@ -116,8 +116,16 @@ Use an API Resource with this minimal contract, finalized in implementation:
 
 The result describes that specific evidence submission, not employee-wide eligibility. Renewals have separate references. Return 401 for absent/invalid/expired/revoked tokens, 403 for disallowed role or missing ability, 404 for unknown/out-of-scope references, and 429 for throttling. Expose no files, names, medical details, private paths, rejection feedback, or unrelated qualifications. Examples use placeholder tokens.
 
+Only current active Staff in an active facility/region within the auditor's assigned region can be looked up. Transfers change access immediately, independently of the submission's historical facility. Tokens pin their issuance region; role/region changes or account deactivation revoke them. Browser sessions and wildcard-only abilities do not authorize the endpoint. Expiry is required and strictly future. Admin selects today through 90 days ahead (default 30); the full selected Manila date is represented by the following midnight converted to UTC as an exclusive cutoff. Limits are 120 requests/minute/IP before authentication and 60/minute/account across tokens.
+
+`valid` passes the shared evidence/date/training predicate for that submission; `expired` means approved evidence with past expiry; otherwise `not_valid`. Review time is the latest approval/rejection event. Nullable expiry/review dates are preserved. Successful verification responses use `private, no-store`. See [API learning path](API-Learning-Path.md) for private requests and defense exercises.
+
 ## Acceptance and operations
 
 Each workflow includes validation, authorization, empty/error states, and focused tests. Use MySQL integration tests in a dedicated disposable database. Seed at least 1,000 synthetic records covering valid/expired/pending/rejected/missing evidence, incomplete/completed training, and cross-scope accounts. Generate harmless fixture files or clearly label unavailable seed evidence; do not show apparently working links to nonexistent downloads.
 
+Implemented local setup: `checkpoint:seed-synthetic` appends 1,690 relational records on the baseline, spanning 18 regional facility scopes and all six roles. It requires private interactive password entry, refuses production and reserved-address/catalog reuse, preserves existing records, and issues no tokens. All sample evidence has a working private PNG clearly labeled synthetic. The normal organization seeder remains separate. The joined HTTP workflow test covers registration through token verification/revocation, alert delivery, and retained audit history; manual desktop/mobile, mail-log, and restore acceptance still requires the checks recorded in Implementation.md.
+
 The local handover documents fresh setup, migrations, seeding, Vite builds, Herd, scheduler operation, mail-log resets, API examples, demo accounts, test commands, and backup/restore of both MySQL and private files. Document only development demo credentials. Never run destructive resets on an existing database without an explicit request. Claim no runtime or feature test result before code exists and the check actually runs.
+
+Operational acceptance includes real log-mail reset and an isolated MySQL/private-file restore test. A recovered instance retains its original APP_KEY for encrypted data, then runs `checkpoint:invalidate-restored-access` in maintenance mode before reopening. With database sessions, the command clears sessions, remembered logins, reset links, and API tokens transactionally while preserving account/password/evidence/history data. Restored account/role/password changes require separate reconciliation against changes since the backup. These checks do not replace a human separate-environment recovery rehearsal.

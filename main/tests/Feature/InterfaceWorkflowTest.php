@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\AuditFinding;
 use App\Models\CredentialDocument;
 use App\Models\Facility;
 use App\Models\JobRole;
@@ -75,6 +76,32 @@ class InterfaceWorkflowTest extends TestCase
             $response = $this->get($url)->assertOk()->assertDontSee('local demo')->assertDontSee('classroom');
             $this->assertControlsHaveLabels($response->getContent(), $url);
         }
+    }
+
+    public function test_finding_update_requires_an_explicit_status_and_keeps_the_choice_after_validation(): void
+    {
+        $finding = AuditFinding::factory()->create(['status' => 'pending_verification']);
+        $url = route('findings.show', $finding);
+        $response = $this->actingAs($finding->audit->author)->get($url)->assertOk();
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument;
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new DOMXPath($document);
+        $selected = $xpath->query('//select[@name="status"]/option[@selected]');
+
+        $this->assertSame(1, $selected->length);
+        $this->assertSame('', $selected->item(0)->getAttribute('value'));
+        $this->assertTrue($selected->item(0)->hasAttribute('disabled'));
+
+        $this->from($url)->post(route('finding-updates.store', $finding), [
+            'status' => 'resolved', 'note' => '',
+        ])->assertRedirect($url)->assertSessionHasErrors('note');
+
+        $this->get($url)->assertOk()->assertSee('value="resolved" selected', false);
+        $this->assertSame('pending_verification', $finding->fresh()->status);
+        $this->assertDatabaseCount('finding_updates', 0);
     }
 
     private function assertControlsHaveLabels(string $html, string $url): void

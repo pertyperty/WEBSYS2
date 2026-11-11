@@ -29,11 +29,21 @@
                 </ul>
             </div>
         @endcan
+        @can('view-audits')
+            <div>
+                <p class="nav-group-label">Follow-up & reports</p>
+                <ul class="mt-2 space-y-1">
+                    @foreach(['audits' => 'Audits', 'findings' => 'Corrective work', 'reports' => 'Reports'] as $section => $label)
+                        <li><a href="{{ route($section.'.index') }}" class="nav-link {{ request()->routeIs($section.'.*') ? 'nav-link-active' : '' }}" @if(request()->routeIs($section.'.*')) aria-current="page" @endif><x-icon :name="$section === 'findings' ? 'check' : 'document'" />{{ $label }}</a></li>
+                    @endforeach
+                </ul>
+            </div>
+        @endcan
         @can('manage-requirements')
-            <details class="navigation-settings" @if(request()->routeIs('admin.*', 'regions.*', 'facilities.*', 'job-roles.*', 'qualifications.*', 'safety-domains.*')) open @endif>
+            <details class="navigation-settings" @if(request()->routeIs('admin.*', 'regions.*', 'facilities.*', 'job-roles.*', 'qualifications.*', 'safety-domains.*', 'auditor-tokens.*')) open @endif>
                 <summary class="nav-link cursor-pointer"><x-icon name="settings" />Administration<x-icon name="chevron" class="ml-auto size-4" /></summary>
                 <ul class="mt-2 space-y-1 pl-7">
-                    @can('manage-users')<li><a class="nav-sub-link" href="{{ route('admin.users') }}" @if(request()->routeIs('admin.*')) aria-current="page" @endif>Accounts & access</a></li>@endcan
+                    @can('manage-users')<li><a class="nav-sub-link" href="{{ route('auditor-tokens.index') }}" @if(request()->routeIs('auditor-tokens.*')) aria-current="page" @endif>Auditor access</a></li><li><a class="nav-sub-link" href="{{ route('admin.users') }}" @if(request()->routeIs('admin.*')) aria-current="page" @endif>Accounts & access</a></li>@endcan
                     <li><a class="nav-sub-link" href="{{ route('job-roles.index') }}" @if(request()->routeIs('job-roles.*')) aria-current="page" @endif>Jobs & requirements</a></li>
                     @can('manage-organization')
                         @foreach(['regions' => 'Regions', 'facilities' => 'Facilities', 'safety-domains' => 'Safety domains', 'qualifications' => 'Qualifications'] as $route => $label)

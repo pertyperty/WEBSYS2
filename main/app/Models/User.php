@@ -15,18 +15,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'verification_reference'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $attributes = [
         'role' => 'staff',
         'is_active' => true,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            $user->verification_reference ??= (string) Str::uuid();
+        });
+    }
 
     public function facility(): BelongsTo
     {

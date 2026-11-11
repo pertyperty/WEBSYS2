@@ -40,3 +40,21 @@ export function evidenceForm(initial) {
         },
     };
 }
+
+export function auditScopeForm(facilities, regionId = '', facilityId = '') {
+    return {
+        regionId, facilityId,
+        get availableFacilities() {
+            return facilities.filter(facility => String(facility.region_id) === String(this.regionId));
+        },
+    };
+}
+
+export function findingAssignmentForm(managers, facilityId = '', assigneeId = '') {
+    return {
+        facilityId, assigneeId,
+        get availableManagers() {
+            return managers.filter(manager => String(manager.facility_id) === String(this.facilityId));
+        },
+    };
+}

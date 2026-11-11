@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assignmentForm, evidenceForm } from '../resources/js/forms.js';
+import { assignmentForm, evidenceForm, auditScopeForm, findingAssignmentForm } from '../resources/js/forms.js';
 
 const assignment = (role) => assignmentForm({ role, assignStaff: true, facilityId: '10', jobId: '20', regionId: '30' });
 
@@ -79,4 +79,18 @@ test('unknown or empty qualifications have no required dependent fields', () => 
         assert.equal(form.enrollmentId, '');
         assert.deepEqual(form.matchingEnrollments, []);
     }
+});
+
+test('audit region selection exposes only facilities in that region', () => {
+    const form = auditScopeForm([{ id: 1, region_id: 10 }, { id: 2, region_id: 20 }], '10');
+    assert.deepEqual(form.availableFacilities.map(facility => facility.id), [1]);
+    form.regionId = '20';
+    assert.deepEqual(form.availableFacilities.map(facility => facility.id), [2]);
+});
+
+test('finding assignment exposes only managers of the selected facility', () => {
+    const form = findingAssignmentForm([{ id: 1, facility_id: 10 }, { id: 2, facility_id: 20 }], '10');
+    assert.deepEqual(form.availableManagers.map(manager => manager.id), [1]);
+    form.facilityId = '';
+    assert.deepEqual(form.availableManagers, []);
 });
