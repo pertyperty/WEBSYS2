@@ -49,9 +49,10 @@
                     <div>
                         <label class="block text-sm font-medium" for="status">Next status</label>
                         <select class="field" id="status" name="status" required>
+                            <option value="" disabled @selected(! old('status'))>Choose next status</option>
                             @foreach(['open' => 'Reopen', 'in_progress' => 'In progress', 'pending_verification' => 'Submit for verification', 'resolved' => 'Verify and resolve'] as $value => $label)
                                 @if(auth()->user()->can('conduct-audits') || in_array($value, ['in_progress', 'pending_verification']))
-                                    <option value="{{ $value }}" @selected(old('status', 'in_progress') === $value)>{{ $label }}</option>
+                                    <option value="{{ $value }}" @selected(old('status') === $value)>{{ $label }}</option>
                                 @endif
                             @endforeach
                         </select>
