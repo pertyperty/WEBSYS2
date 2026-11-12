@@ -15,7 +15,7 @@ class TrainingCourseFactory extends Factory
         return [
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),
-            'qualification_id' => Qualification::factory()->state(['requires_training' => true]),
+            'qualification_id' => Qualification::factory()->requiringTraining(),
             'status' => CourseStatus::Draft,
         ];
     }
@@ -23,5 +23,10 @@ class TrainingCourseFactory extends Factory
     public function published(): static
     {
         return $this->state(fn (): array => ['status' => CourseStatus::Published]);
+    }
+
+    public function archived(): static
+    {
+        return $this->state(fn (): array => ['status' => CourseStatus::Archived]);
     }
 }

@@ -2,14 +2,12 @@
 
 namespace App\Actions;
 
-use App\Enums\CourseStatus;
-use App\Enums\CredentialEventType;
 use App\Enums\CredentialStatus;
-use App\Enums\TrainingStatus;
 use App\Enums\UserRole;
 use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\CredentialDocument;
+use App\Models\CredentialEvent;
 use App\Models\EmployeeTraining;
 use App\Models\Facility;
 use App\Models\JobRole;
@@ -65,15 +63,15 @@ class CreateSyntheticDataset
                 $this->account('admin', 'Alex Rivera', UserRole::Admin, $hash);
                 $unassigned = $this->account('unassigned', 'Jamie Flores', UserRole::Staff, $hash);
                 $inactive = $this->account('inactive', 'Robin Garcia', UserRole::Staff, $hash, ['is_active' => false]);
-                $domain = SafetyDomain::create(['name' => 'Healthcare Logistics Safety']);
-                $job = JobRole::create(['name' => 'Healthcare Logistics Associate']);
-                $observer = JobRole::create(['name' => 'Operations Observer']);
-                $coldChain = Qualification::create(['name' => 'Cold Chain Handling', 'safety_domain_id' => $domain->id, 'requires_training' => true, 'requires_expiry' => true, 'is_active' => true]);
-                $orientation = Qualification::create(['name' => 'Workplace Safety Orientation', 'safety_domain_id' => $domain->id, 'requires_training' => false, 'requires_expiry' => false, 'is_active' => true]);
+                $domain = SafetyDomain::factory()->create(['name' => 'Healthcare Logistics Safety']);
+                $job = JobRole::factory()->create(['name' => 'Healthcare Logistics Associate']);
+                $observer = JobRole::factory()->create(['name' => 'Operations Observer']);
+                $coldChain = Qualification::factory()->for($domain, 'safetyDomain')->requiringTraining()->create(['name' => 'Cold Chain Handling']);
+                $orientation = Qualification::factory()->for($domain, 'safetyDomain')->withoutExpiry()->create(['name' => 'Workplace Safety Orientation']);
                 $job->qualifications()->attach([$coldChain->id, $orientation->id]);
-                $course = TrainingCourse::create(['title' => 'Cold Chain Handling Essentials', 'qualification_id' => $coldChain->id, 'status' => CourseStatus::Published]);
-                TrainingCourse::create(['title' => 'Cold Chain Refresher', 'qualification_id' => $coldChain->id, 'status' => CourseStatus::Draft]);
-                TrainingCourse::create(['title' => 'Cold Chain Handling Previous Offering', 'qualification_id' => $coldChain->id, 'status' => CourseStatus::Archived]);
+                $course = TrainingCourse::factory()->for($coldChain, 'qualification')->published()->create(['title' => 'Cold Chain Handling Essentials']);
+                TrainingCourse::factory()->for($coldChain, 'qualification')->create(['title' => 'Cold Chain Refresher']);
+                TrainingCourse::factory()->for($coldChain, 'qualification')->archived()->create(['title' => 'Cold Chain Handling Previous Offering']);
 
                 foreach ($facilities as $index => $facility) {
                     $number = sprintf('%02d', $index + 1);
@@ -105,15 +103,16 @@ class CreateSyntheticDataset
     /** @param array{is_active?: bool, facility_id?: int, job_role_id?: int, region_id?: int} $assignment */
     private function account(string $address, string $name, UserRole $role, string $hash, array $assignment = []): User
     {
-        return User::factory()->create(['email' => $address.'@checkpoint.example', 'name' => $name, 'password' => $hash, 'role' => $role, ...$assignment]);
+        return User::factory()->role($role)->create(['email' => $address.'@checkpoint.example', 'name' => $name, 'password' => $hash, ...$assignment]);
     }
 
     private function evidenceScenario(User $employee, User $officer, TrainingCourse $course, Qualification $coldChain, Qualification $orientation, string $scenario, string $path, CarbonImmutable $today): void
     {
-        $training = EmployeeTraining::create(['employee_id' => $employee->id, 'training_course_id' => $course->id, 'enrolled_at' => $today->subDays(180)]);
+        $enrollment = EmployeeTraining::factory()->for($employee, 'employee')->for($course, 'trainingCourse');
         if ($scenario !== 'incomplete') {
-            $training->forceFill(['status' => TrainingStatus::Completed, 'completed_at' => $today->subDays(120), 'completed_by' => $officer->id, 'feedback' => 'Practical handling checks completed.'])->save();
+            $enrollment = $enrollment->completed($officer, $today->subDays(120));
         }
+        $training = $enrollment->create(['enrolled_at' => $today->subDays(180)]);
         if ($scenario === 'missing') {
             return;
         }
@@ -142,22 +141,30 @@ class CreateSyntheticDataset
 
     private function document(User $employee, User $officer, Qualification $qualification, ?EmployeeTraining $training, CredentialStatus $status, string $path, CarbonImmutable $issuedOn, ?CarbonImmutable $expiresOn): void
     {
-        $document = CredentialDocument::factory()->create([
+        $factory = match ($status) {
+            CredentialStatus::Approved => CredentialDocument::factory()->approved(),
+            CredentialStatus::Rejected => CredentialDocument::factory()->rejected(),
+            default => CredentialDocument::factory(),
+        };
+        $factory = $factory->has(CredentialEvent::factory()->submittedBy($employee), 'events');
+        if ($status !== CredentialStatus::Pending) {
+            $review = $status === CredentialStatus::Approved
+                ? CredentialEvent::factory()->approvedBy($officer)
+                : CredentialEvent::factory()->rejectedBy($officer);
+            $factory = $factory->has($review, 'events');
+        }
+        $factory->for($employee, 'employee')->for($qualification)->create([
             'employee_id' => $employee->id, 'facility_id' => $employee->facility_id, 'job_role_id' => $employee->job_role_id,
             'qualification_id' => $qualification->id, 'employee_training_id' => $training?->id,
-            'status' => $status, 'private_path' => $path, 'mime_type' => 'image/png', 'file_size' => Storage::disk('local')->size($path),
+            'private_path' => $path, 'mime_type' => 'image/png', 'file_size' => Storage::disk('local')->size($path),
             'issued_at' => $issuedOn->toDateString(), 'expires_at' => $expiresOn?->toDateString(),
         ]);
-        $document->events()->create(['actor_id' => $employee->id, 'type' => CredentialEventType::Submitted]);
-        if ($status !== CredentialStatus::Pending) {
-            $document->events()->create(['actor_id' => $officer->id, 'type' => CredentialEventType::from($status->value), 'note' => $status === CredentialStatus::Rejected ? 'Replace the unreadable evidence with a clear copy.' : null]);
-        }
     }
 
     private function findings(Audit $audit, User $manager, User $officer, CarbonImmutable $today): void
     {
         foreach (['open', 'in_progress', 'pending_verification', 'resolved'] as $status) {
-            $finding = AuditFinding::create(['audit_id' => $audit->id, 'facility_id' => $audit->facility_id, 'region_id' => $audit->region_id, 'title' => 'Review handling records - '.str_replace('_', ' ', $status), 'description' => 'Check handling records and submit corrective evidence for officer verification.', 'assignee_id' => $manager->id, 'due_on' => $today->addDays(14)->toDateString()]);
+            $finding = AuditFinding::factory()->for($audit)->for($manager, 'assignee')->create(['facility_id' => $audit->facility_id, 'region_id' => $audit->region_id, 'title' => 'Review handling records - '.str_replace('_', ' ', $status), 'description' => 'Check handling records and submit corrective evidence for officer verification.', 'assignee_id' => $manager->id, 'due_on' => $today->addDays(14)->toDateString()]);
             if ($status === 'open') {
                 continue;
             }

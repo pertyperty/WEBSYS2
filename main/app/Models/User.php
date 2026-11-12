@@ -99,6 +99,13 @@ class User extends Authenticatable
         };
     }
 
+    #[Scope]
+    protected function verifiableBy(Builder $query, User $auditor): Builder
+    {
+        return $query->where('role', UserRole::Staff)->where('is_active', true)
+            ->whereHas('facility', fn (Builder $facilities): Builder => $facilities->verifiableBy($auditor));
+    }
+
     public function credentialDocuments(): HasMany
     {
         return $this->hasMany(CredentialDocument::class, 'employee_id');

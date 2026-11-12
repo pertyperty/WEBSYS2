@@ -28,9 +28,51 @@ A verification reference identifies a particular evidence submission. It is not 
 
 Read the implemented response in [System specification](System-Proposal.md). Request flow: pre-authentication IP limit (120/minute) → Sanctum token hash and required future expiry → active Auditor, active region, pinned token region and literal `verification:read` ability → account limit (60/minute shared across tokens) → current regional Staff lookup → shared qualification predicate → nine-field Resource. The IP limiter wraps Laravel's throttle middleware so anonymous failures are limited before authentication. Wildcard-only abilities and browser-session authentication are rejected.
 
+## Employee and facility compliance summaries
+
+The original verification route answers whether one submitted document is valid. Two additional read-only routes answer the insurer's wider readiness questions using the existing employee compliance calculation:
+
+| Route | Required literal ability | Result |
+|---|---|---|
+| `GET /api/v1/verifications/{reference}` | `verification:read` | One document's review/date/training validity |
+| `GET /api/v1/employees/{reference}/compliance` | `compliance:read` | Current job eligibility and required qualification states |
+| `GET /api/v1/facilities/{facility}/compliance` | `compliance:read` | Active Staff totals and facility compliance rate |
+
+The employee reference is the opaque `employee_reference` already returned by document verification; a numeric user ID cannot replace it. The facility parameter is a numeric facility ID supplied by the organization administrator for the auditor's assigned region. There is no unscoped employee search or facility directory. Neither summaries nor document verification grant file access.
+
+For a private client, keep the same Authorization/Accept headers and change only the path:
+
+```http
+GET /api/v1/employees/OPAQUE_EMPLOYEE_REFERENCE/compliance HTTP/1.1
+Host: websys2.test
+Accept: application/json
+Authorization: Bearer YOUR_PRIVATE_TOKEN
+```
+
+The employee Resource returns only `employee_reference`, `status`, `required_count`, `satisfied_count`, `qualification_percentage`, `evaluated_on`, and `qualifications`. Each qualification includes its label/domain, state, training completion, effective expiry, and expiring-soon flag. It excludes employee names, emails, database user/document IDs, private paths, reviewer notes, and document contents. A pending renewal does not replace an older valid approval. Missing job/requirements yields `not_assessable` and a null percentage.
+
+For `GET /api/v1/facilities/1/compliance`, an illustrative response is:
+
+```json
+{
+  "data": {
+    "facility_id": 1,
+    "active_staff_count": 3,
+    "assessable_count": 2,
+    "eligible_count": 1,
+    "not_eligible_count": 1,
+    "not_assessable_count": 1,
+    "compliance_rate": 50,
+    "evaluated_on": "2026-11-12"
+  }
+}
+```
+
+The rate is eligible / assessable active Staff ? 100, rounded to two decimals. Inactive accounts and non-Staff roles are excluded; unassessable active Staff are reported separately. An empty facility or one without assessable Staff returns a null rate, never an implied 100%. Only the current active facility/region is accessible. Both summaries use `private, no-store`, evaluate the Manila date once per response, and create no assessment snapshots or review events. Facility totals process employees in eager-loaded batches of 100. The 60/minute/account limit is shared across all three routes and all of that auditor's tokens.
+
 ## 4 Add Sanctum tokens and permissions
 
-An administrator provisions an API-only auditor account with a region and issues an expiring token with `verification:read`. The token is shown once, stored privately by the auditor, and sent in the Authorization header. Sanctum stores a hash for validation. Revocation removes access.
+An administrator provisions an API-only auditor account with a region and issues an expiring token with `verification:read` and `compliance:read`. Previously issued document-only tokens keep their old ability and return 403 on summary routes; revoke/reissue only when expanded access is intended. The token is shown once, stored privately by the auditor, and sent in the Authorization header. Sanctum stores a hash for validation. Revocation removes access.
 
 The token proves which account is calling. Its ability permits the type of operation. A separate region check limits which records that account can verify. All three checks are necessary; a valid token is not permission to query every employee.
 
@@ -68,7 +110,7 @@ The four CSV downloads are authenticated web responses under `/reports/download`
 
 ## Provision and test access
 
-For a local classroom baseline, the optional `php artisan checkpoint:seed-synthetic` command creates `admin@checkpoint.example`, `auditor.01@checkpoint.example`, and Staff evidence scenarios using a password entered privately. It creates **no tokens**. See the [scenario walkthrough](Implementation.md#synthetic-dataset-and-classroom-walkthrough). Scope 01 is the first region by database ID, not an official region number. Use Accounts & access to confirm the assignment and Credentials to obtain a submission reference. Compare `staff.01.current@checkpoint.example` with the two references under `staff.01.renewal@checkpoint.example`; a pending renewal is not valid while the prior approval remains valid. Never project or commit the privately issued bearer value.
+For a fresh local/testing baseline, `DatabaseSeeder` creates 1,690 related synthetic records without prompts, using random undisclosed account passwords. Set individual passwords through the local reset flow. Alternatively, seed only `CatalogSeeder` and use the optional private-password `php artisan checkpoint:seed-synthetic` command. Both paths create `admin@checkpoint.example`, `auditor.01@checkpoint.example`, and Staff evidence scenarios using a password entered privately. It creates **no tokens**. See the [scenario walkthrough](Implementation.md#synthetic-dataset-and-classroom-walkthrough). Scope 01 is the first region by database ID, not an official region number. Use Accounts & access to confirm the assignment and Credentials to obtain a submission reference. Compare `staff.01.current@checkpoint.example` with the two references under `staff.01.renewal@checkpoint.example`; a pending renewal is not valid while the prior approval remains valid. Never project or commit the privately issued bearer value.
 
 This checkout's local dataset is already loaded using the owner's private password. Use its existing accounts; do not rerun seeding or generate a token merely to review the interface. No development API token was created during setup.
 

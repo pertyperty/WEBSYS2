@@ -40,7 +40,7 @@ Copy-Item .env.testing.example .env.testing
 ```
 
 4. Edit `.env` with your development account credentials and actual `APP_URL` from Herd. Edit `.env.testing` with the separate test account credentials/host/port. Keep `DB_DATABASE=checkpoint_test` in the test file. Both files are ignored by Git. Do not paste passwords into chat or commit them.
-5. For a fresh installation, generate application keys, run additive migrations, and seed the small organization fixture:
+5. For a fresh installation, generate application keys, run additive migrations, and run the standard factory-based seed:
 
 ```powershell
 php artisan key:generate
@@ -51,7 +51,9 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password. No default administrator password is shipped. The repeatable seeder creates all 18 Philippine regions, one fictional hub per region based on real logistics locations, two jobs, two safety domains, two training-required qualifications linked to those jobs, and two published initial course offerings. Re-running it restores those demonstration requirement links only when the job, qualification, and domain are active; it preserves existing qualification settings. The optional synthetic dataset command below adds the classroom records separately. Do not use `migrate:fresh` on development data.
+The administrator command prompts for name, unique email, and a hidden password; use a different email from the fictional seeded accounts. No default administrator password is shipped. `DatabaseSeeder` calls `CatalogSeeder` for the 18 Philippine regions/hubs and base job/qualification/course catalogs, then `SyntheticDatasetSeeder` adds 1,690 related records through factories and named relationship states on a fresh local/testing database. That includes 220 accounts, training, evidence, review history, audits, findings, and alerts. It needs no interactive input and issues no API tokens. Seeded accounts receive a random password that is never displayed; use Forgot password with local mail logging to set a chosen account's password, or use your separately created administrator.
+
+Synthetic population is skipped in production and whenever any account already exists. Repeat catalog seeding preserves existing configuration and history. For catalogs only, run `php artisan db:seed --class=CatalogSeeder`. A grader may run `php artisan migrate:fresh --seed --no-interaction` on a dedicated empty local/testing installation; **never run that command on this populated development database**.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
@@ -69,6 +71,8 @@ Organization and qualification configuration is available through the navigation
 
 ## Checks
 
+Real isolated unit tests cover role/compliance labels and the date rule used by evidence selection, including inclusive expiry at Asia/Manila midnight. `DatabaseSeederTest` exercises `migrate:fresh --seed` inside the isolated MySQL test database and checks 1,000+ related records, working private evidence, repeat-run preservation, and production/existing-account guards. `ComplianceApiTest` covers summary contracts, privacy, regional scope, token abilities/lifetime, and shared throttling.
+
 After pulling the auditor API changes, run `composer install`, `php artisan migrate`, and `npm run build` from `main/`. Additive migrations preserve existing records and generate opaque employee references. Keep your existing private environment files.
 
 Run these commands from `main/`:
@@ -83,7 +87,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **254 tests and 2,011 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **303 tests and 2,218 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
@@ -171,14 +175,16 @@ For continuous local scheduling, keep `php artisan schedule:work` running. Produ
 1. As Admin, assign an intended account the Auditor role and an active region through **Accounts & access**. Auditor accounts cannot sign into the browser workspace.
 2. Open **Administration > Auditor access**. When access is needed, choose the auditor, enter a token name, and select expiry (default 30 days ahead, maximum 90). The selected Manila expiry date is inclusive.
 3. Store/deliver the one-time token privately. Never display it during the defense or include it in Git, screenshots, logs, or chat. Later screens show metadata and a Revoke action only.
-4. Follow the [API learning path](main/docs/API-Learning-Path.md#provision-and-test-access) to call `GET /api/v1/verifications/{reference}`. It returns nine safe fields for one submission, not whole-employee eligibility. The employee's current active facility/region determines scope. Browser sessions and wildcard-only abilities are rejected.
+4. Follow the [API learning path](main/docs/API-Learning-Path.md#provision-and-test-access) to call `GET /api/v1/verifications/{reference}`. It returns nine safe fields for one submission. Use `GET /api/v1/employees/{reference}/compliance` for live job eligibility and `GET /api/v1/facilities/{facility}/compliance` for aggregate readiness. The two summaries require the explicit `compliance:read` ability; new Admin-issued tokens receive both read abilities. Old document-only tokens retain their existing permissions until replaced. The employee's current active facility/region determines scope. Browser sessions and wildcard-only abilities are rejected.
 5. Revoke and retry: the token returns 401. Role/region changes and deactivation also revoke tokens. Unknown/other-region references return 404. Limits are 120/minute/IP before authentication and 60/minute/account across tokens.
 
 No third-party provider account or service is required: CheckPoint provides this API. Use HTTPS before delivering bearer tokens beyond the local machine. The current browser review covered the Admin empty state on desktop/mobile; no actual auditor account/token was created. Authenticated API and populated token-management behavior are covered by tests. The synthetic dataset and handover guide are available below; remaining human workflow and restore checks are recorded explicitly.
 
 ## Synthetic classroom dataset
 
-After the normal setup above, run this **interactively** from `main/`:
+The standard `DatabaseSeeder` now supplies the full dataset automatically on a fresh local/testing account database. You do not need the interactive command to meet the 1,000-record requirement. Existing accounts and histories are preserved; this checkout is already populated.
+
+As an alternative on a separate fresh installation, migrate and run `php artisan db:seed --class=CatalogSeeder`, then run this **interactively** from `main/` instead of the standard seed:
 
 ```powershell
 php artisan checkpoint:seed-synthetic
@@ -188,7 +194,7 @@ Enter and confirm a private password for the fictional accounts. There is no def
 
 Use `admin@checkpoint.example`, `officer@checkpoint.example`, and scoped `manager.01@checkpoint.example` / `director.01@checkpoint.example` accounts with the password you entered. Auditor accounts remain API-only. The [full account/scenario guide and per-table counts](main/docs/Implementation.md#synthetic-dataset-and-classroom-walkthrough) explain all addresses, scope numbering, and the defense walkthrough. Dates are relative to creation and age normally.
 
-The command requires 18 active regional facility scopes. It preserves existing records/configuration and refuses to rerun or reuse conflicting reserved addresses/catalog names; it never resets used sample accounts or histories. Test execution verified the counts and rollback on isolated MySQL. This checkout's local database was populated on 2026-11-11 using privately supplied input: 1,690 added records and 223 total accounts, preserving the original three. There are 270 submissions, 18 audits, 72 findings, and zero API tokens. Do not rerun setup here; use the existing accounts with the private password you selected. Fresh installations still use the interactive command above.
+The command requires 18 active regional facility scopes. It preserves existing records/configuration and refuses to rerun or reuse conflicting reserved addresses/catalog names; it never resets used sample accounts or histories. Test execution verified the counts and rollback on isolated MySQL. This checkout's local database was populated on 2026-11-11 using privately supplied input: 1,690 added records and 223 total accounts, preserving the original three. There are 270 submissions, 18 audits, 72 findings, and zero API tokens. Do not rerun setup here; use the existing accounts with the private password you selected. Fresh installations can use the standard noninteractive seeder or the alternative private-password command above.
 
 ## Backup and restore rehearsal
 

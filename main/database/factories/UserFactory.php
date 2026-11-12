@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
+use App\Models\Facility;
+use App\Models\JobRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -42,5 +45,20 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function role(UserRole $role): static
+    {
+        return $this->state(fn (): array => ['role' => $role]);
+    }
+
+    public function assignedTo(Facility $facility, ?JobRole $job = null): static
+    {
+        return $this->for($facility)->state(fn (): array => ['job_role_id' => $job?->id]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => ['is_active' => false]);
     }
 }

@@ -10,7 +10,7 @@ use App\Models\JobRole;
 use App\Models\Qualification;
 use App\Models\TrainingCourse;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\CatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -165,10 +165,10 @@ class TrainingCourseTest extends TestCase
 
     public function test_demo_course_seeding_is_repeatable_and_does_not_republish_archived_offerings(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $course = TrainingCourse::firstOrFail();
         $course->update(['status' => CourseStatus::Archived]);
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $this->assertDatabaseCount('training_courses', 2);
         $this->assertSame(CourseStatus::Archived, $course->fresh()->status);
         $this->assertDatabaseCount('employee_trainings', 0);

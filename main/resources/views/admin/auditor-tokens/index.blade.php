@@ -48,7 +48,7 @@
                     </div>
                     <x-input name="name" label="Token name" required maxlength="100" :value="old('name')" />
                     <x-input name="expires_on" label="Expiry date" type="date" required :min="now('Asia/Manila')->toDateString()" :max="now('Asia/Manila')->addDays(90)->toDateString()" :value="old('expires_on', now('Asia/Manila')->addDays(30)->toDateString())" />
-                    <p class="text-sm text-slate-600">Read-only credential verification for the selected region. Valid through the expiry date, up to 90 days.</p>
+                    <p class="text-sm text-slate-600">Read-only credential verification, employee compliance, and facility summaries for the selected region. Valid through the expiry date, up to 90 days.</p>
                     <button class="button w-full" type="submit" :disabled="submitting">Issue token</button>
                 </form>
             @endif
