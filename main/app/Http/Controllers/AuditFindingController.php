@@ -9,6 +9,7 @@ use App\Models\AuditFinding;
 use App\Models\Facility;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,8 +20,16 @@ class AuditFindingController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = $request->validate(['status' => ['nullable', Rule::in(['open', 'in_progress', 'pending_verification', 'resolved', 'overdue'])]]);
-        $query = AuditFinding::visibleTo($request->user())->with(['assignee', 'facility']);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['open', 'in_progress', 'pending_verification', 'resolved', 'overdue'])],
+        ]);
+        $search = '%'.addcslashes($filters['search'] ?? '', '\\%_').'%';
+        $query = AuditFinding::visibleTo($request->user())->with(['assignee', 'facility'])
+            ->when($search !== '%%', fn (Builder $query): Builder => $query->where(fn (Builder $names): Builder => $names
+                ->where('title', 'like', $search)
+                ->orWhereHas('facility', fn (Builder $facilities): Builder => $facilities->where('name', 'like', $search))
+                ->orWhereHas('assignee', fn (Builder $managers): Builder => $managers->where('name', 'like', $search))));
         if (($filters['status'] ?? '') === 'overdue') {
             $query->where('status', '!=', 'resolved')->where('due_on', '<', now('Asia/Manila')->toDateString());
         } elseif (! empty($filters['status'])) {

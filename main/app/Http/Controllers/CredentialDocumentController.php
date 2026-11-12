@@ -21,10 +21,18 @@ class CredentialDocumentController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = $request->validate(['status' => ['nullable', Rule::enum(CredentialStatus::class)]]);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::enum(CredentialStatus::class)],
+        ]);
+        $search = '%'.addcslashes($filters['search'] ?? '', '\\%_').'%';
 
         return view('credentials.index', [
             'documents' => CredentialDocument::visibleTo($request->user())->with(['employee', 'qualification'])
+                ->when($search !== '%%', fn (Builder $query): Builder => $query->where(fn (Builder $names): Builder => $names
+                    ->where('reference', 'like', $search)
+                    ->orWhereHas('employee', fn (Builder $employees): Builder => $employees->where('name', 'like', $search))
+                    ->orWhereHas('qualification', fn (Builder $qualifications): Builder => $qualifications->where('name', 'like', $search))))
                 ->when($filters['status'] ?? null, fn (Builder $query, string $status): Builder => $query->where('status', $status))
                 ->orderByDesc('id')->paginate(15)->withQueryString(),
             'statuses' => CredentialStatus::cases(),

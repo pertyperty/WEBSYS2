@@ -1,12 +1,16 @@
 <x-layout title="Accounts & access">
+<div x-data="liveFilters" @popstate.window="restore()" @click="follow($event)">
     <div class="page-heading">
         <div><h1 class="text-3xl font-bold">Accounts & access</h1><p class="page-intro">Manage who can sign in and where they work.</p></div>
     </div>
-    <form method="GET" action="{{ route('admin.users') }}" class="mb-6 flex flex-wrap items-end gap-3">
-        <div class="w-full sm:max-w-sm"><label for="account-search">Search accounts</label><input id="account-search" name="search" type="search" value="{{ request('search') }}" class="field" maxlength="100" placeholder="Name or email"></div>
-        <button class="button-secondary" type="submit"><x-icon name="search" />Search</button>
-        @if(request('search'))<a class="text-link" href="{{ route('admin.users') }}">Clear search</a>@endif
-    </form>
+    <x-filter-bar :action="route('admin.users')">
+        <div class="w-full sm:max-w-sm"><label for="account-search">Name or email</label><input id="account-search" name="search" type="search" value="{{ request('search') }}" class="field" maxlength="100" autocomplete="off"></div><div class="w-full sm:w-52"><label for="role-filter">Role</label><select class="field" id="role-filter" name="role"><option value="">All roles</option>@foreach($roles as $role)<option value="{{ $role->value }}" @selected(request('role') === $role->value)>{{ $role->label() }}</option>@endforeach</select></div><div class="w-full sm:w-44"><label for="active-filter">Account status</label><select class="field" id="active-filter" name="active"><option value="">All accounts</option><option value="active" @selected(request('active') === 'active')>Active</option><option value="inactive" @selected(request('active') === 'inactive')>Inactive</option></select></div>
+    </x-filter-bar>
+    @php
+        $filtered = request()->filled('search') || request()->filled('role') || request()->filled('active');
+    @endphp
+    <div data-filter-results class="scroll-mt-24" role="region" aria-label="Results" tabindex="-1" aria-busy="false" :aria-busy="busy" :class="{ 'opacity-60': busy }">
+    <x-result-summary :paginator="$users" noun="account" :filtered="$filtered" />
     <div class="record-list">
         @forelse($users as $account)
             @php
@@ -45,8 +49,12 @@
                 </form>
             </section>
         @empty
-            <x-empty-state title="No accounts found" message="Try a different name or email address." icon="people" />
+            <x-empty-state :title="$filtered ? 'No accounts match your filters' : 'No accounts found'" :message="$filtered ? 'Try another name, email, role or account status.' : 'Accounts will appear here once they are created.'">
+                @if($filtered)<a class="text-link" href="{{ route('admin.users') }}" @click.prevent="reset()">Clear filters</a>@endif
+            </x-empty-state>
         @endforelse
     </div>
     <div class="mt-6">{{ $users->links() }}</div>
+    </div>
+</div>
 </x-layout>

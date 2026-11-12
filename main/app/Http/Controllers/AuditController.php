@@ -10,6 +10,7 @@ use App\Models\Facility;
 use App\Models\Region;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,7 +19,13 @@ class AuditController extends Controller
 {
     public function index(Request $request): View
     {
-        return view('audits.index', ['audits' => Audit::visibleTo($request->user())->with('author')->withCount('findings')->latest('id')->paginate(15)]);
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = '%'.addcslashes($filters['search'] ?? '', '\\%_').'%';
+
+        return view('audits.index', ['audits' => Audit::visibleTo($request->user())->with('author')->withCount('findings')
+            ->when($search !== '%%', fn (Builder $query): Builder => $query->where(fn (Builder $names): Builder => $names
+                ->where('title', 'like', $search)->orWhere('snapshot->facility_name', 'like', $search)->orWhere('snapshot->region_name', 'like', $search)))
+            ->latest('id')->paginate(15)->withQueryString()]);
     }
 
     public function create(): View

@@ -13,18 +13,26 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UserAssignmentController extends Controller
 {
     public function index(Request $request): View
     {
-        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'role' => ['nullable', Rule::enum(UserRole::class)],
+            'active' => ['nullable', Rule::in(['active', 'inactive'])],
+        ]);
+        $search = '%'.addcslashes($filters['search'] ?? '', '\\%_').'%';
 
         return view('admin.users', [
-            'users' => User::query()->when($filters['search'] ?? null, function (Builder $query, string $search): void {
-                $query->where(fn (Builder $names): Builder => $names->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%'));
-            })->orderBy('name')->orderBy('id')->paginate(15)->withQueryString(),
+            'users' => User::query()->when($search !== '%%', fn (Builder $query): Builder => $query
+                ->where(fn (Builder $names): Builder => $names->where('name', 'like', $search)->orWhere('email', 'like', $search)))
+                ->when($filters['role'] ?? null, fn (Builder $query, string $role): Builder => $query->where('role', $role))
+                ->when($filters['active'] ?? null, fn (Builder $query, string $active): Builder => $query->where('is_active', $active === 'active'))
+                ->orderBy('name')->orderBy('id')->paginate(15)->withQueryString(),
             'roles' => UserRole::cases(),
             'facilities' => Facility::active()->orderBy('name')->get(),
             'jobs' => JobRole::active()->orderBy('name')->get(),
