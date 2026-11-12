@@ -7,7 +7,7 @@ use App\Models\Facility;
 use App\Models\JobRole;
 use App\Models\Qualification;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\CatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -94,10 +94,10 @@ class JobRequirementsTest extends TestCase
 
     public function test_demo_seeding_is_repeatable_and_does_not_overwrite_qualification_configuration(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $driving = Qualification::where('name', 'Defensive Driving')->firstOrFail();
         $driving->update(['requires_expiry' => false]);
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $this->assertDatabaseCount('safety_domains', 2);
         $this->assertDatabaseCount('qualifications', 2);
         $this->assertDatabaseCount('job_role_qualification', 2);
@@ -106,24 +106,24 @@ class JobRequirementsTest extends TestCase
 
     public function test_demo_seeding_does_not_reassign_inactive_qualifications(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $driving = Qualification::where('name', 'Defensive Driving')->firstOrFail();
         $driver = JobRole::where('name', 'Driver')->firstOrFail();
         $driver->qualifications()->detach($driving);
         $driving->update(['is_active' => false]);
         $driving->safetyDomain->update(['is_active' => false]);
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $this->assertDatabaseMissing('job_role_qualification', ['job_role_id' => $driver->id, 'qualification_id' => $driving->id]);
         $this->assertFalse($driving->fresh()->is_active);
     }
 
     public function test_demo_seeding_does_not_assign_requirements_to_inactive_jobs(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $driver = JobRole::where('name', 'Driver')->firstOrFail();
         $driver->qualifications()->detach();
         $driver->update(['is_active' => false]);
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(CatalogSeeder::class);
         $this->assertSame(0, $driver->qualifications()->count());
         $this->assertFalse($driver->fresh()->is_active);
     }

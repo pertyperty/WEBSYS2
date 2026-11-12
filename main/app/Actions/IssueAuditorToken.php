@@ -23,7 +23,7 @@ class IssueAuditorToken
                 throw ValidationException::withMessages(['auditor_id' => 'Choose an active auditor assigned to an active region.']);
             }
             $expiresAt = CarbonImmutable::parse($data['expires_on'], 'Asia/Manila')->addDay()->startOfDay()->utc();
-            $token = $auditor->createToken($data['name'], ['verification:read'], $expiresAt);
+            $token = $auditor->createToken($data['name'], ['verification:read', 'compliance:read'], $expiresAt);
             $token->accessToken->forceFill(['region_id' => $auditor->region_id])->save();
 
             return $token;

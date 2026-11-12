@@ -2,11 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Enums\CredentialStatus;
 use App\Models\CredentialDocument;
 use App\Models\Facility;
 use App\Models\JobRole;
 use App\Models\Qualification;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -27,5 +29,28 @@ class CredentialDocumentFactory extends Factory
             'issued_at' => now('Asia/Manila')->toDateString(),
             'expires_at' => now('Asia/Manila')->addYear()->toDateString(),
         ];
+    }
+
+    public function approved(): static
+    {
+        return $this->state(fn (): array => ['status' => CredentialStatus::Approved]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (): array => ['status' => CredentialStatus::Rejected]);
+    }
+
+    public function expiringOn(CarbonImmutable $date): static
+    {
+        return $this->state(fn (): array => ['expires_at' => $date->toDateString()]);
+    }
+
+    public function expired(): static
+    {
+        return $this->approved()->state(fn (): array => [
+            'issued_at' => CarbonImmutable::now('Asia/Manila')->subYear()->toDateString(),
+            'expires_at' => CarbonImmutable::now('Asia/Manila')->subDay()->toDateString(),
+        ]);
     }
 }

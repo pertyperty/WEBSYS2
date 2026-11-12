@@ -12,6 +12,8 @@ use Illuminate\Support\Collection;
 
 class SelectEffectiveCredential
 {
+    public function __construct(private IsCredentialDateValid $dates) {}
+
     public function find(User $employee, Qualification $qualification): ?CredentialDocument
     {
         $documents = $employee->credentialDocuments()->where('qualification_id', $qualification->id)
@@ -34,8 +36,7 @@ class SelectEffectiveCredential
         $today = $asOf->setTimezone('Asia/Manila')->toDateString();
         if ($document->qualification_id !== $qualification->id || $document->status !== CredentialStatus::Approved
             || ! $qualification->is_active || ! $qualification->safetyDomain->is_active
-            || ! $document->issued_at || $document->issued_at->toDateString() > $today
-            || ($document->expires_at ? $document->expires_at->toDateString() < $today : $qualification->requires_expiry)) {
+            || ! $this->dates->handle($document->issued_at?->toDateString(), $document->expires_at?->toDateString(), $qualification->requires_expiry, $asOf)) {
             return false;
         }
         if (! $qualification->requires_training) {

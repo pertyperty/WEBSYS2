@@ -67,11 +67,7 @@ class CredentialDocument extends Model
             return $query->whereKey([]);
         }
 
-        return $query->whereHas('employee', function (Builder $employees) use ($auditor): void {
-            $employees->where('role', UserRole::Staff)->where('is_active', true)
-                ->whereHas('facility', fn (Builder $facilities): Builder => $facilities->active()->where('region_id', $auditor->region_id)
-                    ->whereHas('region', fn (Builder $regions): Builder => $regions->active()));
-        });
+        return $query->whereHas('employee', fn (Builder $employees): Builder => $employees->verifiableBy($auditor));
     }
 
     #[Scope]

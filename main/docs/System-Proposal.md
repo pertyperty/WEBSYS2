@@ -23,7 +23,7 @@ Each account has one application role. Each employee has one current facility an
 | Regional Director | Read compliance summaries, training progress, audits, dashboards, and reports for the assigned region. No evidence review or raw-document download. |
 | Facility Manager | Read the same summaries for the assigned facility and update corrective findings assigned to them. No evidence review, role assignment, or raw-document download. |
 | Staff | View permitted profile fields, own requirements/history/notifications, enroll in published courses, and upload/download own evidence. |
-| Auditor | API-only verification in the assigned region with `verification:read`; no browser dashboard or document access. |
+| Auditor | API-only document verification (`verification:read`) and employee/facility summaries (`compliance:read`) in the assigned region; no browser dashboard or document access. |
 
 Admin may download evidence for oversight; officers may download for review. Nobody approves their own submission. Enforce route restrictions, resource policies, scoped queries, and API abilities; hiding buttons is insufficient.
 
@@ -94,9 +94,9 @@ Send in-app database notifications to staff and their facility managers when req
 
 ## Auditor API
 
-Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0, explicit `verification:read` ability, active-account checks, regional authorization, and rate limiting. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
+Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0 and explicit `verification:read`. Also implemented: `GET /api/v1/employees/{reference}/compliance` and `GET /api/v1/facilities/{facility}/compliance`, requiring explicit `compliance:read`. All use active-account checks, regional authorization, and shared rate limiting. Newly issued tokens grant both read abilities; existing document-only tokens are not silently expanded. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
 
-The API Resource returns this nine-field contract:
+The document verification Resource retains this nine-field contract:
 
 ```json
 {
@@ -118,13 +118,13 @@ The result describes that specific evidence submission, not employee-wide eligib
 
 Only current active Staff in an active facility/region within the auditor's assigned region can be looked up. Transfers change access immediately, independently of the submission's historical facility. Tokens pin their issuance region; role/region changes or account deactivation revoke them. Browser sessions and wildcard-only abilities do not authorize the endpoint. Expiry is required and strictly future. Admin selects today through 90 days ahead (default 30); the full selected Manila date is represented by the following midnight converted to UTC as an exclusive cutoff. Limits are 120 requests/minute/IP before authentication and 60/minute/account across tokens.
 
-`valid` passes the shared evidence/date/training predicate for that submission; `expired` means approved evidence with past expiry; otherwise `not_valid`. Review time is the latest approval/rejection event. Nullable expiry/review dates are preserved. Successful verification responses use `private, no-store`. See [API learning path](API-Learning-Path.md) for private requests and defense exercises.
+`valid` passes the shared evidence/date/training predicate for that submission; `expired` means approved evidence with past expiry; otherwise `not_valid`. Review time is the latest approval/rejection event. Nullable expiry/review dates are preserved. All three successful API responses use `private, no-store`. The employee summary reports current required qualification states and overall eligibility through `AssessEmployeeCompliance`, without names/emails/private files or review notes. The facility summary counts active Staff only, reports unassessable accounts separately, and divides eligible by assessable Staff; zero assessable Staff yields a null rate. Employee lookup uses the opaque employee reference; facility lookup uses a region-scoped numeric facility ID. Summary reads do not write assessment history. See [API learning path](API-Learning-Path.md) for private requests and defense exercises.
 
 ## Acceptance and operations
 
 Each workflow includes validation, authorization, empty/error states, and focused tests. Use MySQL integration tests in a dedicated disposable database. Seed at least 1,000 synthetic records covering valid/expired/pending/rejected/missing evidence, incomplete/completed training, and cross-scope accounts. Generate harmless fixture files or clearly label unavailable seed evidence; do not show apparently working links to nonexistent downloads.
 
-Implemented local setup: `checkpoint:seed-synthetic` appends 1,690 relational records on the baseline, spanning 18 regional facility scopes and all six roles. It requires private interactive password entry, refuses production and reserved-address/catalog reuse, preserves existing records, and issues no tokens. All sample evidence has a working private PNG clearly labeled synthetic. The normal organization seeder remains separate. The joined HTTP workflow test covers registration through token verification/revocation, alert delivery, and retained audit history; manual desktop/mobile, mail-log, and restore acceptance still requires the checks recorded in Implementation.md.
+Implemented local/testing setup: `DatabaseSeeder` invokes the base `CatalogSeeder` and factory-based `SyntheticDatasetSeeder`. On a fresh account database it adds 1,690 related records with random undisclosed passwords, spanning 18 facility scopes and all six roles, without prompts or API tokens. It skips synthetic population in production or if accounts already exist. The alternative `checkpoint:seed-synthetic` command accepts a private interactive password after catalog-only seeding and refuses reserved-address/catalog reuse. Both paths use named factory/relationship states and working harmless private PNG evidence; neither resets existing accounts or history. The joined HTTP workflow test covers registration through token verification/revocation, alert delivery, and retained audit history; manual desktop/mobile, mail-log, and restore acceptance still requires the checks recorded in Implementation.md.
 
 The local handover documents fresh setup, migrations, seeding, Vite builds, Herd, scheduler operation, mail-log resets, API examples, demo accounts, test commands, and backup/restore of both MySQL and private files. Document only development demo credentials. Never run destructive resets on an existing database without an explicit request. Claim no runtime or feature test result before code exists and the check actually runs.
 

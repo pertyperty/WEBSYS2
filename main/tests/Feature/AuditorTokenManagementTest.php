@@ -31,7 +31,7 @@ class AuditorTokenManagementTest extends TestCase
         $token = PersonalAccessToken::sole();
         $plain = $response->viewData('plainTextToken');
         $this->assertSame(hash('sha256', explode('|', $plain, 2)[1]), $token->token);
-        $this->assertSame(['verification:read'], $token->abilities);
+        $this->assertSame(['verification:read', 'compliance:read'], $token->abilities);
         $this->assertSame($auditor->region_id, $token->region_id);
         $this->assertSame('2026-12-11 16:00:00', $token->expires_at->utc()->format('Y-m-d H:i:s'));
         $this->assertStringNotContainsString($plain, serialize(session()->all()));

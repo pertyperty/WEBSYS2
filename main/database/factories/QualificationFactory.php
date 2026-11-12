@@ -19,4 +19,14 @@ class QualificationFactory extends Factory
             'is_active' => true,
         ];
     }
+
+    public function requiringTraining(): static
+    {
+        return $this->state(fn (): array => ['requires_training' => true]);
+    }
+
+    public function withoutExpiry(): static
+    {
+        return $this->state(fn (): array => ['requires_expiry' => false]);
+    }
 }
