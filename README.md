@@ -199,15 +199,19 @@ With MySQL 8 tools available on PATH, run from `main/` (the database password is
 ```powershell
 $checkpointBackupRoot = Join-Path $env:USERPROFILE ('CheckPointBackups\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $checkpointBackupRoot -ErrorAction Stop | Out-Null
+$checkpointBackupOwner = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+icacls.exe $checkpointBackupRoot /inheritance:r /grant:r "$($checkpointBackupOwner):(OI)(CI)F"
+if ($LASTEXITCODE -ne 0) { throw 'Could not restrict backup access; stop before copying secrets.' }
 mysqldump.exe --host=127.0.0.1 --port=3306 --user=checkpoint --password --single-transaction --no-tablespaces --set-gtid-purged=OFF --result-file="$checkpointBackupRoot\checkpoint.sql" checkpoint
 if ($LASTEXITCODE -ne 0) { throw 'Database backup failed; do not treat this folder as a complete backup.' }
 Compress-Archive -LiteralPath storage/app/private -DestinationPath "$checkpointBackupRoot\private-files.zip" -ErrorAction Stop
 Copy-Item -LiteralPath .env -Destination "$checkpointBackupRoot\.env" -ErrorAction Stop
 git rev-parse HEAD | Set-Content -LiteralPath "$checkpointBackupRoot\commit.txt" -ErrorAction Stop
+Get-FileHash -Algorithm SHA256 -LiteralPath "$checkpointBackupRoot\checkpoint.sql", "$checkpointBackupRoot\private-files.zip" | Select-Object Path, Hash | ConvertTo-Json | Set-Content -LiteralPath "$checkpointBackupRoot\backup-hashes.json" -ErrorAction Stop
 php artisan up
 ```
 
-Do not send or commit the backup folder: it contains credentials, reset/session data, and private files. Confirm that the SQL dump and archive exist and are nonempty; record the dependency lockfiles/commit used. If the client cannot connect, fix the MySQL tools/account privately rather than pasting credentials. This procedure has not been applied to the owner's development database; the isolated automated recovery check is described below.
+Do not send or commit the backup folder: it contains credentials, reset/session data, and private files. Confirm that the SQL dump and archive exist and are nonempty; verify their retained SHA-256 hashes before restoration and record the dependency lockfiles/commit used. If the client cannot connect, fix the MySQL tools/account privately rather than pasting credentials. A retained backup of this checkout was taken on 2026-11-12 at revision `344f2e9`; see the [recovery rehearsal record](main/docs/Implementation.md#retained-backup-rehearsal). The isolated automated recovery check is described below.
 
 Rehearse recovery into a **new local database and separate checkout/site**. Create a least-privilege account for that new database through your private MySQL administrator client. Use MySQL Workbench's Data Import to import `checkpoint.sql` into that empty schema. Extract `private-files.zip` outside the active app and copy its `private` directory into the recovery checkout's `storage/app/private`. Restore the saved `.env` privately, retain its original `APP_KEY`, and change the database credentials/APP_URL to the recovery environment; do not point at the active or test database.
 
