@@ -416,3 +416,14 @@ Operationally, run `php artisan checkpoint:reconcile-compliance` manually, or `p
 Validation for this milestone: the full isolated MySQL suite passes with **200 tests / 1,457 assertions**, including 22 new notification, audit/finding, scope, and CSV cases. Eight Node interaction tests, Pint, strict Composer validation, production Vite build, and Blade compilation pass. Additive migrations were applied to the local development database without resetting existing data. Remote CI is not claimed by these local results.
 
 Manual browser evidence: signed-in Admin reports at 1280px/390px and Officer audit capture at 1280px/390px, labels and overflow measurements, NCR/Central Luzon dependent facility options, and comparison with official SafetyCulture/Mitti and OpenProject screenshots. No audit/finding business records were created for this review; full finding/manager browser interaction remains to be reviewed.
+
+
+## Training progress and qualification matrix filters
+
+Training progress now combines employee/course/qualification search, training status, and scoped facility filters. Counts and completion subtotals describe all filtered enrollments and refresh with results. The qualification matrix supports employee name, scoped facility, and scoped job filters before pagination. Existing assessment/expiry rules remain centralized and unchanged. Its columns are the requirements for the employees on the displayed page.
+
+Completion entries are protected from automatic result replacement, including late responses and Back/Forward within the results screen. Finish recording or use **Clear entered details** before filtering. This is an in-memory protection for result changes, not persistent draft storage or protection from ordinary navigation/reload. Validation restores the matching completion form. Staff see an attendance/completion next step, followed by evidence review/submission guidance; completion never grants compliance by itself.
+
+Public reference observations, historical screenshot comparison, and manual review limits are recorded in [the usability decision](Development-Decisions.md#training-and-matrix-usability-follow-up). Verify the changed training/matrix screens on desktop and mobile before accepting this interaction: complete/clear a draft, change filters while a request is pending, submit an invalid completion, use Back/Forward and pagination, follow evidence links, and scroll the matrix with keyboard/touch. Automated coverage does not establish these visual/assistive-technology outcomes.
+
+Validation on 2026-11-13: 351 PHP tests / 2,491 assertions passed serially on guarded MySQL `checkpoint_test`, including the recovery group with MySQL clients on PATH. All 24 Node interaction tests passed. Pint, strict Composer validation, Vite production build, Blade compilation/clear, and whitespace checks passed. No development records, credentials, dependencies, or migrations changed.

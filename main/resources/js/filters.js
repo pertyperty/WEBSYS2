@@ -20,8 +20,9 @@ export function liveFilters(options = {}) {
     let revision = 0;
 
     return {
-        ready: false, busy: false, composing: false, error: '', message: '', reportType: 'readiness', downloadUrl: '',
+        ready: false, busy: false, composing: false, error: '', message: '', reportType: 'readiness', downloadUrl: '', resultsUrl: '',
         init() {
+            this.resultsUrl = location.href;
             this.ready = Boolean(this.$root.querySelector('[data-filter-form]') && this.$root.querySelector('[data-filter-results]'));
             this.reportType = this.$root.querySelector('[name="type"]')?.value ?? 'readiness';
             this.downloadUrl = this.$root.querySelector('[data-filter-download]')?.href ?? '';
@@ -54,8 +55,19 @@ export function liveFilters(options = {}) {
             this.composing = false;
             this.typing(event);
         },
+        keepPendingEdits() {
+            const fields = this.$root.querySelectorAll('[data-filter-edit-form] input:not([type="hidden"]), [data-filter-edit-form] textarea');
+            if (![...fields].some(field => field.value.trim() !== '')) return false;
+            this.cancel();
+            this.busy = false;
+            this.restoreFields(new URL(this.resultsUrl));
+            if (location.href !== this.resultsUrl) history.replaceState(null, '', this.resultsUrl);
+            this.error = 'Finish recording completion or clear the entered details before changing results. Your entries are still here.';
+            return true;
+        },
         async apply(target = null, push = true) {
             this.cancel();
+            if (this.keepPendingEdits()) return;
             const requestRevision = revision;
             const form = this.$root.querySelector('[data-filter-form]');
             const url = target ? new URL(target, location.href) : filterUrl(form.action, entries(form), location.href);
@@ -79,6 +91,7 @@ export function liveFilters(options = {}) {
                 const page = parse(html);
                 const next = page.querySelector('[data-filter-results]');
                 if (!next) throw new Error('The results were unavailable.');
+                if (this.keepPendingEdits()) return;
                 this.message = next.querySelector('[data-filter-summary]')?.textContent.trim() ?? 'Results updated.';
                 this.$root.querySelector('[data-filter-results]').replaceChildren(...next.childNodes);
                 const download = this.$root.querySelector('[data-filter-download]');
@@ -88,6 +101,7 @@ export function liveFilters(options = {}) {
                     download.href = nextDownload.href;
                 }
                 if (push && url.href !== location.href) history.pushState(null, '', url.href);
+                this.resultsUrl = url.href;
             } catch (error) {
                 if (requestRevision === revision && error.name !== 'AbortError') {
                     this.error = 'Results could not be updated. Your previous results are still shown.';

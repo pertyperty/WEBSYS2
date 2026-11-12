@@ -110,8 +110,9 @@ function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'f
     const results = { nodes: ['previous results'], replaceChildren(...nodes) { this.nodes = nodes; }, focus() { this.focused = true; }, scrollIntoView() { this.scrolled = true; } };
     const download = { href: 'http://checkpoint.test/reports/download?type=readiness' };
     const location = { href: form.action, origin: 'http://checkpoint.test', assign(url) { this.assigned = url; } };
-    const history = { updates: [], pushState(_state, _title, url) { this.updates.push(url); location.href = url; } };
-    const root = { querySelector(selector) {
+    const history = { updates: [], replaceState(_state, _title, url) { location.href = url; }, pushState(_state, _title, url) { this.updates.push(url); location.href = url; } };
+    const editFields = [];
+    const root = { querySelectorAll: () => editFields, querySelector(selector) {
         return ({ '[data-filter-form]': form, '[data-filter-results]': results, '[data-filter-download]': download,
             '[name="type"]': fields[2] })[selector];
     } };
@@ -123,7 +124,7 @@ function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'f
     });
     model.$root = root;
     model.init();
-    return { model, fields, results, download, location, history };
+    return { model, fields, results, download, location, history, editFields };
 }
 
 test('filter URLs trim text, encode special characters and remove obsolete pagination', () => {
@@ -294,4 +295,48 @@ test('modified clicks and links to another workflow keep normal browser navigati
     await model.follow(event);
     assert.equal(event.defaultPrevented, undefined);
     assert.equal(calls.length, 0);
+});
+
+
+test('filtering preserves unfinished completion details and restores the displayed filter values', async () => {
+    const calls = [];
+    const { model, fields, results, editFields, location } = filterHarness(async url => { calls.push(url); });
+    editFields.push({ value: 'Practical assessment notes' });
+    fields[0].value = 'different course';
+    await model.apply();
+    assert.equal(calls.length, 0);
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.equal(editFields[0].value, 'Practical assessment notes');
+    assert.equal(fields[0].value, '');
+    assert.equal(location.href, model.resultsUrl);
+    assert.match(model.error, /Finish recording completion/);
+    assert.equal(model.busy, false);
+});
+
+test('completion details entered during a pending fetch prevent its response from replacing the form', async () => {
+    let complete;
+    const { model, editFields, results } = filterHarness(() => new Promise(resolve => { complete = resolve; }));
+    const request = model.apply();
+    editFields.push({ value: '2026-11-13' });
+    complete({ ok: true, text: async () => 'new results' });
+    await request;
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.equal(editFields[0].value, '2026-11-13');
+    assert.equal(model.busy, false);
+});
+
+test('cleared completion fields allow filtering and Back cannot silently discard entered details', async () => {
+    const { model, editFields, results, location, fields } = filterHarness();
+    editFields.push({ value: 'notes' });
+    location.href = 'http://checkpoint.test/reports?search=older';
+    model.restore();
+    await flush();
+    assert.equal(location.href, 'http://checkpoint.test/reports');
+    assert.equal(fields[0].value, '');
+    assert.deepEqual(results.nodes, ['previous results']);
+    editFields[0].value = '';
+    fields[0].value = 'next';
+    await model.apply();
+    assert.deepEqual(results.nodes, ['fresh']);
+    assert.equal(model.error, '');
 });
