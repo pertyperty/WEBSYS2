@@ -49,7 +49,9 @@ class EmployeeScopeTest extends TestCase
         $records = $this->employees();
         $manager = User::factory()->for($records['facility'])->create(['role' => UserRole::FacilityManager]);
         $this->actingAs($manager)->get('/employees?facility_id='.$records['outside']->facility_id)
-            ->assertOk()->assertSee('Own employee')->assertDontSee('Neighbor employee')->assertDontSee('Outside employee');
+            ->assertOk()->assertViewHas('employees', fn ($rows): bool => $rows->isEmpty())
+            ->assertDontSee('Own employee')->assertDontSee('Neighbor employee')->assertDontSee('Outside employee');
+        $this->get('/employees')->assertOk()->assertSee('Own employee')->assertDontSee('Neighbor employee')->assertDontSee('Outside employee');
         $this->get('/employees/'.$records['own']->id)->assertOk()->assertSee($records['own']->jobRole->name);
         $this->get('/employees/'.$records['neighbor']->id)->assertNotFound();
         $this->get('/employees/'.$records['outside']->id)->assertNotFound();

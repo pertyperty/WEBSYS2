@@ -59,6 +59,16 @@ Synthetic population is skipped in production and whenever any account already e
 
 The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. Daily compliance history reconciliation and in-app expiry alerts are scheduled at 00:05 Asia/Manila. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
 
+## Search and filters
+
+People, Accounts, Credentials, Corrective work, Courses, Audits, and Reports now share automatic filtering. A selection applies immediately; text search waits 400 ms after typing stops. Results refresh in place, keeping the input/cursor available. Clear filters resets the selection, result counts distinguish no matches from no records, and loading/failure messages explain what is happening. An unsuccessful request preserves the previous results and offers retry/reload.
+
+The address bar tracks applied filters; Back/Forward restores them, and a new filter starts on page one. Pagination keeps the current query. With JavaScript unavailable, the same labeled GET form provides an Update results button. Report search labels follow the report type, and CSV access waits for the matching preview to finish updating. Counts and CSV exports remain constrained by the signed-in user's scope.
+
+Search accepts literal text, including zero, percent signs, and underscores. People search includes job/facility names; Credentials includes employee/qualification/reference; Corrective work includes facility/assignee; Courses includes qualification/domain; Audits includes historical location names. Accounts adds role/account-status filters; People offers only facilities in the viewer's employee scope.
+
+The [usability comparison and verification limits](main/docs/Development-Decisions.md#search-and-filtering-review-2026-11-12) distinguish the inspected public interfaces and saved CheckPoint captures from the new interaction's automated tests. Fresh authenticated desktop/mobile and screen-reader acceptance remain pending.
+
 ## First walkthrough
 
 1. Sign in as the administrator created by the command above.
@@ -87,7 +97,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **303 tests and 2,218 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+The current application is verified with **332 tests and 2,390 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
 
 ## Organization and requirements walkthrough
 
