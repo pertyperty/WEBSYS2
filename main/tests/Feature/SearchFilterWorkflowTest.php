@@ -27,6 +27,8 @@ class SearchFilterWorkflowTest extends TestCase
     #[TestWith(['/credentials'])]
     #[TestWith(['/findings'])]
     #[TestWith(['/training-courses'])]
+    #[TestWith(['/training-enrollments'])]
+    #[TestWith(['/qualification-matrix'])]
     #[TestWith(['/audits'])]
     #[TestWith(['/reports'])]
     public function test_list_pages_keep_labeled_get_filters_and_a_no_javascript_submit(string $path): void
@@ -177,6 +179,8 @@ class SearchFilterWorkflowTest extends TestCase
     #[TestWith(['/credentials'])]
     #[TestWith(['/findings'])]
     #[TestWith(['/training-courses'])]
+    #[TestWith(['/training-enrollments'])]
+    #[TestWith(['/qualification-matrix'])]
     #[TestWith(['/audits'])]
     public function test_search_rejects_array_and_excessively_long_input(string $path): void
     {
@@ -191,6 +195,10 @@ class SearchFilterWorkflowTest extends TestCase
     #[TestWith(['/credentials?status=unknown', 'status'])]
     #[TestWith(['/training-courses?status=unknown', 'status'])]
     #[TestWith(['/employees?facility_id=invalid', 'facility_id'])]
+    #[TestWith(['/training-enrollments?status=unknown', 'status'])]
+    #[TestWith(['/training-enrollments?facility_id=invalid', 'facility_id'])]
+    #[TestWith(['/qualification-matrix?facility_id=invalid', 'facility_id'])]
+    #[TestWith(['/qualification-matrix?job_role_id=invalid', 'job_role_id'])]
     public function test_filter_values_are_validated(string $url, string $field): void
     {
         $this->actingAs(User::factory()->role(UserRole::Admin)->create())->get($url)->assertSessionHasErrors($field);

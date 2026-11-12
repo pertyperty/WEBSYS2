@@ -10,10 +10,16 @@
         @endcan
     </div>
     <section class="panel space-y-5">
-        <p class="whitespace-pre-line text-sm text-slate-700">{{ $course->description ?? 'No additional description.' }}</p>
-        <p class="text-sm text-slate-600">After training, submit evidence for approval to meet this qualification.</p>
+        @if($course->description)<p class="whitespace-pre-line text-sm text-slate-700">{{ $course->description }}</p>@endif
+        <p class="text-sm text-slate-600">Meeting this qualification requires recorded training completion and approved, unexpired evidence.</p>
         @if($ownEnrollment)
             <p class="font-semibold">Your status: {{ ucfirst($ownEnrollment->status->value) }}</p>
+            @if($ownEnrollment->completed_at)
+                <p class="text-sm text-slate-600">Check your evidence for {{ $course->qualification->name }}. When submitting it, select this qualification and completed course.</p>
+                @can('submit-credentials')<a class="text-link" href="{{ route('credentials.index', ['search' => $course->qualification->name]) }}">View my evidence</a><a class="text-link" href="{{ route('credentials.create') }}">Submit evidence</a>@endcan
+            @else
+                <p class="text-sm text-slate-600">Attend the training, then ask a Compliance Officer to record your completion.</p>
+            @endif
             <a href="{{ route('training-enrollments.index') }}" class="text-sm font-semibold text-teal-800 underline">View training progress</a>
         @else
             @can('enroll-training')
