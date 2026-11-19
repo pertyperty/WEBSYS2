@@ -94,7 +94,7 @@ Send in-app database notifications to staff and their facility managers when req
 
 ## Auditor API
 
-Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0 and explicit `verification:read`. Also implemented: `GET /api/v1/employees/{reference}/compliance` and `GET /api/v1/facilities/{facility}/compliance`, requiring explicit `compliance:read`. All use active-account checks, regional authorization, and shared rate limiting. Newly issued tokens grant both read abilities; existing document-only tokens are not silently expanded. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
+Implemented: `GET /api/v1/verifications/{reference}` using Sanctum 4.4.0 and explicit `verification:read`. Also implemented: `GET /api/v1/employees/{reference}/compliance`, `GET /api/v1/facilities/{facility}/compliance`, and `GET /api/v1/facilities/{facility}/employees`, requiring explicit `compliance:read`. All use active-account checks, regional authorization, and shared rate limiting. Newly issued tokens grant both read abilities; existing document-only tokens are not silently expanded. Submission and employee references are opaque UUIDs. An ability never grants access outside the auditor's region. Admin provisions/revokes tokens; plaintext appears once in a direct no-store/no-referrer response without session flash.
 
 The document verification Resource retains this nine-field contract:
 
