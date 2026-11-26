@@ -65,9 +65,21 @@ class InterfaceWorkflowTest extends TestCase
         $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
         $employee->jobRole->qualifications()->attach(Qualification::factory()->create());
 
-        $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
+        $response = $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
             ->assertSee('Requirements not met')
             ->assertSee('This is a system-calculated requirements assessment, not an independent authorization for deployment.');
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument;
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new DOMXPath($document);
+        $assessmentBadges = $xpath->query(
+            "//section[contains(concat(' ', normalize-space(@class), ' '), ' panel ') and contains(concat(' ', normalize-space(@class), ' '), ' mb-6 ')]//span[contains(concat(' ', normalize-space(@class), ' '), ' status-badge ')]"
+        );
+
+        $this->assertSame(1, $assessmentBadges->length);
     }
 
     public function test_staff_can_submit_evidence_while_required_training_is_pending(): void
