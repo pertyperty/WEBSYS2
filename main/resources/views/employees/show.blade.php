@@ -44,8 +44,10 @@
                 @if(auth()->id() === $employee->id)
                     @can('submit-credentials')
                         @if($item['requires_training'] && ! $item['training_completed'])
+                            <p class="mt-2 text-sm text-slate-600">You can submit evidence while training is pending, but it cannot be approved until the required training is completed.</p>
                             <a class="text-link mt-1.5" href="{{ route('training-courses.index') }}">Find training<x-icon name="arrow" class="size-4" /></a>
-                        @elseif($item['state'] !== 'satisfied' || $item['expiring_soon'])
+                        @endif
+                        @if($item['state'] !== 'satisfied' || $item['expiring_soon'])
                             <a class="text-link mt-1.5" href="{{ route('credentials.create', ['qualification' => $item['qualification_id']]) }}">{{ $item['expiring_soon'] ? 'Submit renewal' : 'Submit evidence' }}<x-icon name="arrow" class="size-4" /></a>
                         @endif
                     @endcan
