@@ -16,8 +16,16 @@
                     <p class="mt-1 text-sm text-slate-600">{{ $course->qualification->name }} / {{ $course->qualification->safetyDomain->name }}</p>
                     <p class="mt-1 text-xs text-slate-500">{{ $course->enrollments_count }} enrollments</p>
                 </div>
-                <x-status-badge :status="$course->status->value" />
-                <a href="{{ route('training-courses.show', $course) }}" class="text-sm font-semibold text-teal-800 underline">View course</a>
+                <div class="flex items-center gap-4">
+                    <x-status-badge :status="$course->status->value" />
+
+                    <a
+                        href="{{ route('training-courses.show', $course) }}"
+                        class="button"
+                    >
+                        View course →
+                    </a>
+                </div>
             </section>
         @empty
             <p class="panel text-sm text-slate-600">No courses available.</p>
