@@ -55,7 +55,19 @@ class InterfaceWorkflowTest extends TestCase
 
         $this->actingAs($employee)->get('/dashboard')->assertOk()->assertSee('Your next steps')
             ->assertSee(route('employees.show', $employee), false)->assertDontSee('Accounts &amp; access', false)
+            ->assertSee('Requirements not met')
+            ->assertSee('This system-calculated assessment does not independently authorize deployment.')
             ->assertViewHas('ownAssessment', fn (array $result): bool => $result['employee_id'] === $employee->id && $result['status'] === 'not_eligible');
+    }
+
+    public function test_employee_readiness_explains_the_calculated_status(): void
+    {
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $employee->jobRole->qualifications()->attach(Qualification::factory()->create());
+
+        $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
+            ->assertSee('Requirements not met')
+            ->assertSee('This is a system-calculated requirements assessment, not an independent authorization for deployment.');
     }
 
     public function test_staff_can_submit_evidence_while_required_training_is_pending(): void
@@ -221,7 +233,8 @@ class InterfaceWorkflowTest extends TestCase
         $unassigned = User::factory()->create(['name' => 'Waiting Staff']);
 
         $this->actingAs($admin)->get('/employees')->assertOk()
-            ->assertSee($assigned->name)->assertSee('Not eligible')->assertSee('0/1 met');
+            ->assertSee($assigned->name)->assertSee('Requirements not met')->assertSee('0/1 met')
+            ->assertSee('Compliance statuses are system-calculated from assigned requirements; they do not independently authorize deployment.');
         $this->get('/admin/users?assignment=unassigned')->assertOk()
             ->assertViewHas('users', fn ($rows): bool => $rows->modelKeys() === [$unassigned->id])
             ->assertSee('Unassigned');

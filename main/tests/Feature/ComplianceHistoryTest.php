@@ -137,9 +137,9 @@ class ComplianceHistoryTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-11-10 12:00', 'Asia/Manila'));
         [$employee, $qualification] = $this->employeeWithRequirement();
         CredentialDocument::factory()->create(['employee_id' => $employee->id, 'qualification_id' => $qualification->id, 'status' => CredentialStatus::Approved, 'expires_at' => '2026-11-10']);
-        $this->actingAs($employee)->get("/employees/{$employee->id}")->assertOk()->assertSee('Eligible');
+        $this->actingAs($employee)->get("/employees/{$employee->id}")->assertOk()->assertSee('Requirements met');
         $this->travelTo(CarbonImmutable::parse('2026-11-11 00:00', 'Asia/Manila'));
-        $this->get("/employees/{$employee->id}")->assertOk()->assertSee('Not eligible')->assertSee('Expired');
+        $this->get("/employees/{$employee->id}")->assertOk()->assertSee('Requirements not met')->assertSee('Expired');
         $this->assertDatabaseCount('compliance_assessments', 2);
     }
 

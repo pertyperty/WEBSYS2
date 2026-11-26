@@ -14,11 +14,12 @@
     </div>
 
     <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div class="metric"><p class="metric-label">Eligible</p><p class="metric-value text-emerald-700">{{ $eligibleCount }}</p></div>
-        <div class="metric"><p class="metric-label">Not eligible</p><p class="metric-value text-rose-700">{{ $notEligibleCount }}</p></div>
-        <div class="metric"><p class="metric-label">Not assessable</p><p class="metric-value text-amber-700">{{ $notAssessableCount }}</p></div>
+        <div class="metric"><p class="metric-label">Requirements met</p><p class="metric-value text-emerald-700">{{ $eligibleCount }}</p></div>
+        <div class="metric"><p class="metric-label">Requirements not met</p><p class="metric-value text-rose-700">{{ $notEligibleCount }}</p></div>
+        <div class="metric"><p class="metric-label">Assessment incomplete</p><p class="metric-value text-amber-700">{{ $notAssessableCount }}</p></div>
         <div class="metric"><p class="metric-label">Findings</p><p class="metric-value text-slate-900">{{ $audit->findings->count() }}</p></div>
     </div>
+    <p class="mb-6 text-sm text-slate-500">Captured statuses are system-calculated from assigned requirements; they do not independently authorize deployment.</p>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="min-w-0 space-y-6">
@@ -52,7 +53,7 @@
                             </div>
                             <div class="flex shrink-0 items-center gap-3">
                                 <span class="text-xs text-slate-500">{{ $employee['satisfied_count'] }}/{{ $employee['required_count'] }}</span>
-                                <x-status-badge :status="$employee['status']" />
+                                <x-status-badge :status="$employee['status']" :label="\App\Enums\ComplianceStatus::from($employee['status'])->label()" />
                             </div>
                         </div>
                     @endforeach

@@ -38,7 +38,7 @@ class FacilityEmployeeComplianceApiTest extends TestCase
 
         $response->assertOk()->assertJsonPath('data.0.employee_reference', $eligible->verification_reference)
             ->assertJsonPath('data.0.status', 'eligible')
-            ->assertJsonPath('data.0.duty_status', 'Cleared for duty')
+            ->assertJsonPath('data.0.duty_status', 'Requirements met')
             ->assertJsonPath('data.0.required_count', 1)
             ->assertJsonPath('data.0.satisfied_count', 1)
             ->assertJsonPath('data.0.qualification_percentage', 100)
