@@ -33,14 +33,14 @@ class QualificationController extends Controller
     {
         Qualification::create($request->validated());
 
-        return to_route('qualifications.index')->with('status', 'Record created.');
+        return to_route('qualifications.index')->with('status', 'Qualification created.');
     }
 
     public function edit(Qualification $qualification): View
     {
         return view('qualifications.form', [
             'qualification' => $qualification,
-            'domains' => SafetyDomain::active()->orderBy('name')->get(),
+            'domains' => SafetyDomain::active()->orWhereKey($qualification->safety_domain_id)->orderBy('name')->get(),
         ]);
     }
 
@@ -51,6 +51,6 @@ class QualificationController extends Controller
             $history->handle($employee, 'qualification', $request->user());
         }
 
-        return to_route('qualifications.index')->with('status', 'Record updated.');
+        return to_route('qualifications.index')->with('status', 'Qualification updated.');
     }
 }

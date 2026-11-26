@@ -13,19 +13,18 @@ use App\Models\SafetyDomain;
 use App\Models\TrainingCourse;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 class SelectEffectiveCredentialTest extends TestCase
 {
     private function action(): SelectEffectiveCredential
     {
-        return new SelectEffectiveCredential(new IsCredentialDateValid());
+        return new SelectEffectiveCredential(new IsCredentialDateValid);
     }
 
     private function employee(int $id = 1): User
     {
-        $employee = new User();
+        $employee = new User;
         $employee->setAttribute('id', $id);
 
         return $employee;
@@ -38,7 +37,7 @@ class SelectEffectiveCredentialTest extends TestCase
         bool $requiresTraining = false,
         bool $domainActive = true
     ): Qualification {
-        $qualification = new Qualification();
+        $qualification = new Qualification;
 
         $qualification->setRawAttributes([
             'id' => $id,
@@ -47,7 +46,7 @@ class SelectEffectiveCredentialTest extends TestCase
             'requires_training' => $requiresTraining,
         ]);
 
-        $domain = new SafetyDomain();
+        $domain = new SafetyDomain;
         $domain->setRawAttributes([
             'id' => 1,
             'is_active' => $domainActive,
@@ -67,7 +66,7 @@ class SelectEffectiveCredentialTest extends TestCase
         string $expiresAt = '2026-12-31',
         ?EmployeeTraining $training = null
     ): CredentialDocument {
-        $document = new CredentialDocument();
+        $document = new CredentialDocument;
 
         $document->setRawAttributes([
             'id' => $id,
@@ -90,14 +89,14 @@ class SelectEffectiveCredentialTest extends TestCase
         ?string $completedAt = '2026-01-01',
         ?int $courseQualificationId = null
     ): EmployeeTraining {
-        $course = new TrainingCourse();
+        $course = new TrainingCourse;
 
         $course->setRawAttributes([
             'id' => 1,
             'qualification_id' => $courseQualificationId ?? $qualificationId,
         ]);
 
-        $training = new EmployeeTraining();
+        $training = new EmployeeTraining;
 
         $training->setRawAttributes([
             'id' => 1,

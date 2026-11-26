@@ -27,7 +27,7 @@ class JobRoleController extends Controller
     {
         JobRole::create($request->validated());
 
-        return to_route('job-roles.index')->with('status', 'Record created.');
+        return to_route('job-roles.index')->with('status', 'Job role created.');
     }
 
     public function edit(JobRole $jobRole): View
@@ -41,6 +41,6 @@ class JobRoleController extends Controller
     {
         $jobRole->update($request->validated());
 
-        return to_route('job-roles.index')->with('status', 'Record updated.');
+        return to_route('job-roles.index')->with('status', 'Job role updated.');
     }
 }

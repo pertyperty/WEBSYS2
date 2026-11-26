@@ -27,7 +27,7 @@ class RegionController extends Controller
     {
         Region::create($request->validated());
 
-        return to_route('regions.index')->with('status', 'Record created.');
+        return to_route('regions.index')->with('status', 'Region created.');
     }
 
     public function edit(Region $region): View
@@ -41,6 +41,6 @@ class RegionController extends Controller
     {
         $region->update($request->validated());
 
-        return to_route('regions.index')->with('status', 'Record updated.');
+        return to_route('regions.index')->with('status', 'Region updated.');
     }
 }

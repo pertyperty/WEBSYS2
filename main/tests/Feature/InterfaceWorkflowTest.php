@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\CredentialDocument;
 use App\Models\Facility;
@@ -121,6 +122,39 @@ class InterfaceWorkflowTest extends TestCase
         $this->actingAs($finding->audit->author)->get(route('findings.show', $finding))->assertOk()
             ->assertSee('Reopen')->assertSee('Save update')
             ->assertDontSee('No further action needed');
+    }
+
+    public function test_people_list_displays_employee_readiness_and_accounts_filter_unassigned_staff(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $facility = Facility::factory()->create(['name' => 'Manila Hub']);
+        $job = JobRole::factory()->create(['name' => 'Cold Driver']);
+        $qualification = Qualification::factory()->create();
+        $job->qualifications()->attach($qualification);
+        $assigned = User::factory()->assignedTo($facility, $job)->create(['name' => 'Assigned Staff']);
+        $unassigned = User::factory()->create(['name' => 'Waiting Staff']);
+
+        $this->actingAs($admin)->get('/employees')->assertOk()
+            ->assertSee($assigned->name)->assertSee('Not eligible')->assertSee('0/1 met');
+        $this->get('/admin/users?assignment=unassigned')->assertOk()
+            ->assertViewHas('users', fn ($rows): bool => $rows->modelKeys() === [$unassigned->id])
+            ->assertSee('Unassigned');
+        $this->get('/admin/users?assignment=invalid')->assertSessionHasErrors('assignment');
+    }
+
+    public function test_facility_manager_finding_detail_does_not_link_to_inaccessible_regional_audit(): void
+    {
+        $facility = Facility::factory()->create();
+        $regionalAudit = Audit::factory()->create(['region_id' => $facility->region_id, 'facility_id' => null]);
+        $finding = AuditFinding::factory()->create([
+            'audit_id' => $regionalAudit->id,
+            'facility_id' => $facility->id,
+            'region_id' => $facility->region_id,
+        ]);
+
+        $this->actingAs($finding->assignee)->get(route('findings.show', $finding))->assertOk()
+            ->assertSee($regionalAudit->title)
+            ->assertDontSee(route('audits.show', $regionalAudit), false);
     }
 
     private function assertControlsHaveLabels(string $html, string $url): void
