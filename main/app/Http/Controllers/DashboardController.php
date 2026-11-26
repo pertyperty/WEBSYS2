@@ -6,6 +6,8 @@ use App\Actions\AssessEmployeeCompliance;
 use App\Enums\ComplianceStatus;
 use App\Enums\CredentialStatus;
 use App\Enums\TrainingStatus;
+use App\Enums\UserRole;
+use App\Models\AuditFinding;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -16,7 +18,8 @@ class DashboardController extends Controller
     public function __invoke(Request $request, AssessEmployeeCompliance $assessment): View
     {
         $asOf = CarbonImmutable::now('Asia/Manila')->startOfDay();
-        $employees = User::visibleTo($request->user())->with(AssessEmployeeCompliance::RELATIONS)->get();
+        $viewer = $request->user();
+        $employees = User::visibleTo($viewer)->with(AssessEmployeeCompliance::RELATIONS)->get();
         $assessments = $employees->map(fn (User $employee): array => $assessment->handle($employee, $asOf));
         $assessable = $assessments->where('status', '!=', ComplianceStatus::NotAssessable->value);
         $eligible = $assessable->where('status', ComplianceStatus::Eligible->value)->count();
@@ -25,7 +28,14 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'assessedOn' => $asOf->toDateString(),
-            'ownAssessment' => $assessments->firstWhere('employee_id', $request->user()->id),
+            'ownAssessment' => $assessments->firstWhere('employee_id', $viewer->id),
+            'openFindingsCount' => $viewer->can('view-audits')
+                ? AuditFinding::visibleTo($viewer)->where('status', '!=', 'resolved')->count()
+                : 0,
+            'unassignedStaffCount' => $viewer->can('manage-users')
+                ? User::query()->where('role', UserRole::Staff)->where('is_active', true)
+                    ->where(fn ($query) => $query->whereNull('facility_id')->orWhereNull('job_role_id'))->count()
+                : 0,
             'totals' => [
                 'employees' => $employees->count(), 'assessable' => $assessable->count(), 'eligible' => $eligible,
                 'not_eligible' => $assessable->count() - $eligible,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\IssueAuditorToken;
 use App\Enums\UserRole;
 use App\Http\Requests\IssueAuditorTokenRequest;
+use App\Models\Region;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -20,8 +21,9 @@ class AuditorTokenController extends Controller
             ->whereHas('region', fn ($query) => $query->active())->with('region')->orderBy('name')->get(['id', 'name', 'region_id']);
         $tokens = PersonalAccessToken::where('tokenable_type', (new User)->getMorphClass())
             ->with('tokenable')->orderByDesc('id')->paginate(15);
+        $tokenRegions = Region::whereIn('id', $tokens->getCollection()->pluck('region_id')->filter()->unique())->pluck('name', 'id');
 
-        return view('admin.auditor-tokens.index', compact('auditors', 'tokens'));
+        return view('admin.auditor-tokens.index', compact('auditors', 'tokens', 'tokenRegions'));
     }
 
     public function store(IssueAuditorTokenRequest $request, IssueAuditorToken $issue): Response

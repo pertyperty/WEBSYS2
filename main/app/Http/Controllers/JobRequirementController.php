@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateJobRequirementsRequest;
 use App\Models\JobRole;
 use App\Models\Qualification;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -18,7 +19,9 @@ class JobRequirementController extends Controller
     {
         return view('job-roles.requirements', [
             'jobRole' => $jobRole,
-            'domains' => Qualification::active()->with('safetyDomain')
+            'domains' => Qualification::active()
+                ->whereHas('safetyDomain', fn (Builder $query): Builder => $query->active())
+                ->with('safetyDomain')
                 ->orderBy('name')->get()->groupBy('safetyDomain.name'),
             'selected' => $jobRole->qualifications()->pluck('qualifications.id')->all(),
         ]);

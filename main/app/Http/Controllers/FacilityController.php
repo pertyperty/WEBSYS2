@@ -29,14 +29,14 @@ class FacilityController extends Controller
     {
         Facility::create($request->validated());
 
-        return to_route('facilities.index')->with('status', 'Record created.');
+        return to_route('facilities.index')->with('status', 'Facility created.');
     }
 
     public function edit(Facility $facility): View
     {
         return view('facilities.form', [
             'facility' => $facility,
-            'regions' => Region::active()->orderBy('name')->get(),
+            'regions' => Region::active()->orWhereKey($facility->region_id)->orderBy('name')->get(),
         ]);
     }
 
@@ -44,6 +44,6 @@ class FacilityController extends Controller
     {
         $facility->update($request->validated());
 
-        return to_route('facilities.index')->with('status', 'Record updated.');
+        return to_route('facilities.index')->with('status', 'Facility updated.');
     }
 }
