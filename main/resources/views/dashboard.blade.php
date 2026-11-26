@@ -16,20 +16,22 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-teal-50">{{ $statusEnum->dutyLabel() }}</span>
                 </div>
-                <h2 class="mt-2.5 text-2xl font-bold">{{ $statusEnum->label() }}</h2>
+                <h2 class="mt-2.5 text-2xl font-bold">Compliance assessment</h2>
                 <p class="mt-1 text-sm text-teal-100">{{ $ownAssessment['satisfied_count'] }} of {{ $ownAssessment['required_count'] }} required qualifications met</p>
+                <p class="mt-2 text-xs text-teal-100">This system-calculated assessment does not independently authorize deployment.</p>
             </div>
             <a class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-teal-900 transition-colors hover:bg-teal-50" href="{{ route('employees.show', auth()->user()) }}">View readiness<x-icon name="arrow" class="size-4" /></a>
         </section>
     @else
         <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            @foreach(['eligible' => ['Eligible', 'text-emerald-700'], 'not_eligible' => ['Not eligible', 'text-rose-700'], 'not_assessable' => ['Not assessable', 'text-amber-700'], 'employees' => ['People in scope', 'text-slate-900']] as $key => [$label, $color])
+            @foreach(['eligible' => ['Requirements met', 'text-emerald-700'], 'not_eligible' => ['Requirements not met', 'text-rose-700'], 'not_assessable' => ['Assessment incomplete', 'text-amber-700'], 'employees' => ['People in scope', 'text-slate-900']] as $key => [$label, $color])
                 <section class="metric">
                     <h2 class="metric-label">{{ $label }}</h2>
                     <p class="metric-value {{ $color }}">{{ number_format($totals[$key]) }}</p>
                 </section>
             @endforeach
         </div>
+        <p class="mb-6 text-sm text-slate-500">These counts are system-calculated from assigned requirements; they do not independently authorize deployment.</p>
     @endif
 
     <div class="grid items-start gap-6 xl:grid-cols-[1.45fr_1fr]">
@@ -87,10 +89,10 @@
         <div class="space-y-5">
             @if(! $staff)
                 <section class="panel">
-                    <h2 class="text-base font-semibold">Eligibility rate</h2>
+                    <h2 class="text-base font-semibold">Requirements met rate</h2>
                     <p class="mt-2 text-4xl font-semibold tracking-tight text-teal-800">{{ $totals['eligible_rate'] === null ? '--' : $totals['eligible_rate'].'%' }}</p>
-                    <p class="mt-2 text-xs text-slate-500">{{ $totals['eligible'] }} eligible / {{ $totals['assessable'] }} assessable staff</p>
-                    @if($totals['eligible_rate'] !== null)<progress class="mt-3.5 h-2 w-full accent-teal-700" value="{{ $totals['eligible'] }}" max="{{ $totals['assessable'] }}" aria-label="Eligible staff out of assessable staff"></progress>@endif
+                    <p class="mt-2 text-xs text-slate-500">{{ $totals['eligible'] }} of {{ $totals['assessable'] }} assessable staff meet requirements</p>
+                    @if($totals['eligible_rate'] !== null)<progress class="mt-3.5 h-2 w-full accent-teal-700" value="{{ $totals['eligible'] }}" max="{{ $totals['assessable'] }}" aria-label="Staff meeting requirements out of assessable staff"></progress>@endif
                     <details class="mt-3.5 text-xs text-slate-500"><summary class="cursor-pointer font-medium text-teal-800">Calculation notes</summary><p class="mt-1.5">Counts active staff with configured job requirements ({{ $totals['not_assessable'] }} excluded).</p></details>
                 </section>
             @endif

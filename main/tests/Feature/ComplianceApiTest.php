@@ -42,7 +42,7 @@ class ComplianceApiTest extends TestCase
 
         $response->assertOk()->assertExactJson(['data' => [
             'employee_reference' => $employee->verification_reference,
-            'status' => 'eligible', 'duty_status' => 'Cleared for duty',
+            'status' => 'eligible', 'duty_status' => 'Requirements met',
             'required_count' => 1, 'satisfied_count' => 1,
             'qualification_percentage' => 100, 'evaluated_on' => '2026-11-12',
             'qualifications' => [[
@@ -74,9 +74,9 @@ class ComplianceApiTest extends TestCase
         $token = $this->tokenFor($auditor);
 
         $this->requestSummary('employees/'.$eligible->verification_reference, $token)->assertOk()
-            ->assertJsonPath('data.duty_status', 'Cleared for duty');
+            ->assertJsonPath('data.duty_status', 'Requirements met');
         $this->requestSummary('employees/'.$notEligible->verification_reference, $token)->assertOk()
-            ->assertJsonPath('data.duty_status', 'Restricted from duty');
+            ->assertJsonPath('data.duty_status', 'Requirements not met');
     }
 
     public function test_facility_rate_counts_only_assessable_active_staff_in_that_facility(): void
@@ -115,7 +115,8 @@ class ComplianceApiTest extends TestCase
         $token = $this->tokenFor($auditor);
 
         $this->requestSummary('employees/'.$employee->verification_reference, $token)->assertOk()
-            ->assertJsonPath('data.status', 'not_assessable')->assertJsonPath('data.qualification_percentage', null);
+            ->assertJsonPath('data.status', 'not_assessable')
+            ->assertJsonPath('data.duty_status', 'Assessment incomplete')->assertJsonPath('data.qualification_percentage', null);
         $this->requestSummary('facilities/'.$facility->id, $token)->assertOk()
             ->assertJsonPath('data.active_staff_count', 1)->assertJsonPath('data.assessable_count', 0)
             ->assertJsonPath('data.not_assessable_count', 1)->assertJsonPath('data.compliance_rate', null);

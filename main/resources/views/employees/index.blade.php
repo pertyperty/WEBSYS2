@@ -1,7 +1,10 @@
 <x-layout title="People">
 <div x-data="liveFilters" @popstate.window="restore()" @click="follow($event)">
     <div class="page-heading">
-        <div><h1 class="text-2xl font-bold sm:text-3xl">People</h1></div>
+        <div>
+            <h1 class="text-2xl font-bold sm:text-3xl">People</h1>
+            <p class="page-intro">Compliance statuses are system-calculated from assigned requirements; they do not independently authorize deployment.</p>
+        </div>
         <a class="button-secondary" href="{{ route('qualification-matrix') }}"><x-icon name="matrix" class="size-4" />Qualification matrix</a>
     </div>
     <x-filter-bar :action="route('employees.index')">
@@ -25,7 +28,7 @@
                         @if($result['required_count'] > 0 && $result['percentage'] !== null)
                             <span class="text-xs font-medium text-slate-500">{{ $result['satisfied_count'] }}/{{ $result['required_count'] }} met</span>
                         @endif
-                        <x-status-badge :status="$result['status']" />
+                        <x-status-badge :status="$result['status']" :label="\App\Enums\ComplianceStatus::from($result['status'])->label()" />
                         @if(! $employee->is_active)<x-status-badge status="inactive" />@endif
                         <x-icon name="arrow" class="size-4 text-slate-400 transition-colors group-hover:text-teal-800" />
                     </div>

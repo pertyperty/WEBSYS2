@@ -60,7 +60,7 @@ Authorization: Bearer YOUR_PRIVATE_TOKEN
     {
       "employee_reference": "OPAQUE_EMPLOYEE_REFERENCE",
       "status": "eligible",
-      "duty_status": "Cleared for duty",
+      "duty_status": "Requirements met",
       "required_count": 4,
       "satisfied_count": 4,
       "qualification_percentage": 100,
@@ -89,7 +89,7 @@ Each result excludes names, email addresses, database IDs, facility details, and
 
 The employee Resource returns only `employee_reference`, `status`, `duty_status`, `required_count`, `satisfied_count`, `qualification_percentage`, `evaluated_on`, and `qualifications`. Each qualification includes its label/domain, state, training completion, effective expiry, and expiring-soon flag. It excludes employee names, emails, database user/document IDs, private paths, reviewer notes, and document contents. A pending renewal does not replace an older valid approval. Missing job/requirements yields `not_assessable` and a null percentage.
 
-`duty_status` is a readable label derived from `status`: `eligible` means "Cleared for duty", `not_eligible` means "Restricted from duty", and `not_assessable` means "Duty status pending". Clients should branch on the stable `status` value and display the label. It adds no separate scheduling, attendance, or dispatch permission. CheckPoint reports readiness; any dispatch integration must consult the current result at assignment time.
+`duty_status` remains a display-only label derived from the stable `status` value: `eligible` means "Requirements met", `not_eligible` means "Requirements not met", and `not_assessable` means "Assessment incomplete". The response fields and stable status values are unchanged; only the display text has been clarified. Clients should branch on `status`, not `duty_status`, and must not treat this calculated assessment as an independent deployment authorization. CheckPoint reports requirement compliance; any dispatch integration must consult its own applicable authorization rules.
 
 For `GET /api/v1/facilities/1/compliance`, an illustrative response is:
 

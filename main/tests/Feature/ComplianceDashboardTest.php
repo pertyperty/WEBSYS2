@@ -40,7 +40,9 @@ class ComplianceDashboardTest extends TestCase
             'employees' => 4, 'assessable' => 2, 'eligible' => 1, 'not_eligible' => 1, 'not_assessable' => 2,
             'eligible_rate' => 50.0, 'missing' => 1, 'expired' => 0, 'expiring_soon' => 1,
             'training_incomplete' => 0, 'pending_documents' => 1, 'enrolled' => 1, 'completed' => 1,
-        ])->assertSee('1 eligible / 2 assessable staff');
+        ])->assertSee('Requirements met')->assertSee('Requirements not met')->assertSee('Assessment incomplete')
+            ->assertSee('1 of 2 assessable staff meet requirements')
+            ->assertSee('These counts are system-calculated from assigned requirements; they do not independently authorize deployment.');
         $this->assertDatabaseCount('compliance_assessments', 0);
     }
 

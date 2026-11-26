@@ -3,7 +3,7 @@
     <div class="page-heading">
         <div>
             <h1 class="text-2xl font-bold sm:text-3xl">Qualification matrix</h1>
-            <p class="page-intro">Showing qualifications required on this page &middot; N/A = not required.</p>
+            <p class="page-intro">Showing qualifications required on this page &middot; N/A = not required. Overall statuses are system-calculated and do not independently authorize deployment.</p>
         </div>
     </div>
     <x-filter-bar :action="route('qualification-matrix')">
@@ -34,7 +34,7 @@
                             <th scope="row" class="sticky left-0 z-10 min-w-52 border-r border-slate-200/80 bg-white px-4 py-3.5 align-top font-normal">
                                 <a href="{{ route('employees.show', $employee) }}" class="font-semibold text-teal-800 hover:underline">{{ $employee->name }}</a>
                                 <p class="mt-0.5 text-xs text-slate-500">{{ $result['job_role_name'] ?? 'No job' }} &middot; {{ $result['facility_name'] ?? 'No facility' }}</p>
-                                <div class="mt-2"><x-status-badge :status="$result['status']" /></div>
+                                <div class="mt-2"><x-status-badge :status="$result['status']" :label="\App\Enums\ComplianceStatus::from($result['status'])->label()" /></div>
                                 @if($result['reason'])<details class="mt-1.5 text-xs text-slate-500"><summary class="cursor-pointer font-medium text-amber-800">Why?</summary><p class="mt-1">{{ $result['reason'] }}</p></details>@endif
                             </th>
                             @foreach($qualifications as $qualification)

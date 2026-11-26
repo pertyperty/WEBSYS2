@@ -12,13 +12,13 @@
         <div class="flex flex-wrap items-center justify-between gap-5">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <x-status-badge :status="$assessment['status']" />
-                    <x-status-badge :status="$assessment['status']" :label="\App\Enums\ComplianceStatus::from($assessment['status'])->dutyLabel()" />
+                    <x-status-badge :status="$assessment['status']" :label="\App\Enums\ComplianceStatus::from($assessment['status'])->label()" />
                 </div>
                 <p class="mt-2.5 text-sm text-slate-600">{{ $assessment['satisfied_count'] }} of {{ $assessment['required_count'] }} required qualifications met &middot; {{ $assessment['assessed_on'] }}</p>
             </div>
-            <p class="text-right text-3xl font-semibold tracking-tight">{{ $assessment['percentage'] === null ? '--' : $assessment['percentage'].'%' }}<span class="mt-0.5 block text-xs font-normal text-slate-500">{{ $assessment['percentage'] === null ? 'Not assessable' : 'Complete' }}</span></p>
+            <p class="text-right text-3xl font-semibold tracking-tight">{{ $assessment['percentage'] === null ? '--' : $assessment['percentage'].'%' }}<span class="mt-0.5 block text-xs font-normal text-slate-500">{{ $assessment['percentage'] === null ? 'Assessment incomplete' : 'Complete' }}</span></p>
         </div>
+        <p class="mt-3 text-sm text-slate-500">This is a system-calculated requirements assessment, not an independent authorization for deployment.</p>
         @if($assessment['reason'])<p class="notice notice-warning mt-4">{{ $assessment['reason'] }}</p>@endif
     </section>
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">

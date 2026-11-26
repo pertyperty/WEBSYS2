@@ -1,14 +1,17 @@
 <x-layout title="Compliance history">
     <a href="{{ route('employees.show', $employee) }}" class="back-link"><x-icon name="arrow-left" class="size-4" />{{ $employee->name }}</a>
     <div class="page-heading mt-3">
-        <div><h1 class="text-2xl font-bold sm:text-3xl">Assessment history</h1></div>
+        <div>
+            <h1 class="text-2xl font-bold sm:text-3xl">Assessment history</h1>
+            <p class="page-intro">These system-calculated requirements assessments do not independently authorize deployment.</p>
+        </div>
     </div>
     <div class="record-list">
         @forelse($history as $entry)
             <section class="record-row space-y-2.5">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex flex-wrap items-center gap-2.5">
-                        <x-status-badge :status="$entry->status->value" />
+                        <x-status-badge :status="$entry->status->value" :label="$entry->status->label()" />
                         <h2 class="text-sm font-semibold text-slate-900">{{ $entry->assessed_on->format('M j, Y') }}</h2>
                     </div>
                     <span class="text-sm font-semibold text-slate-700">{{ $entry->satisfied_count }}/{{ $entry->required_count }} met @if($entry->percentage !== null)&middot; {{ $entry->percentage }}%@endif</span>
