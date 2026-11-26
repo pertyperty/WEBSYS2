@@ -50,10 +50,7 @@
                                     Pending submissions awaiting Officer review
                                 @endif
                             </span>
-                            <span class="block text-xs text-slate-500">
-                                {{ $totals['pending_documents'] }}
-                                {{ ! $staff && ! auth()->user()->can('review-credentials') ? 'awaiting Officer review' : 'awaiting review' }}
-                            </span>
+                            <span class="block text-xs text-slate-500">{{ $totals['pending_documents'] }} {{ ! $staff && ! auth()->user()->can('review-credentials') ? 'awaiting Officer review' : 'awaiting review' }}</span>
                         </span>
                         <x-icon name="arrow" class="size-4 text-teal-800" />
                     </a>
