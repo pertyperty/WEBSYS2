@@ -43,10 +43,14 @@
                 @if($item['pending_count'])
                     <p class="mt-1.5 text-xs text-slate-500">
                         {{ $item['pending_count'] }} pending {{ \Illuminate\Support\Str::plural('review', $item['pending_count']) }}.
-                        @if($item['state'] === 'satisfied')
+                        @if($item['document_id'] !== null)
                             An earlier valid approval remains in effect.
+                        @elseif($item['has_expired_approval'])
+                            The previous approval has expired; this renewal is awaiting review.
+                        @elseif($item['has_approved_credential'])
+                            An approved credential is not currently valid; this submission is awaiting review.
                         @else
-                            Pending evidence is awaiting review; no currently valid approval is in place.
+                            No credential has been approved yet; this submission is awaiting review.
                         @endif
                     </p>
                 @endif

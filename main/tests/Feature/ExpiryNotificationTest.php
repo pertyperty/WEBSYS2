@@ -59,6 +59,44 @@ class ExpiryNotificationTest extends TestCase
         $this->assertSame(1, $employee->notifications()->count());
     }
 
+    public function test_expired_approval_stays_alertable_while_renewal_is_pending_without_duplicate_alerts(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-11 12:00', 'Asia/Manila'));
+        [$employee, $qualification] = $this->employeeWithRequirement();
+        $manager = User::factory()->create(['role' => UserRole::FacilityManager, 'facility_id' => $employee->facility_id]);
+        $expired = CredentialDocument::factory()->create([
+            'employee_id' => $employee->id,
+            'qualification_id' => $qualification->id,
+            'status' => CredentialStatus::Approved,
+            'issued_at' => '2025-11-10',
+            'expires_at' => '2026-11-10',
+        ]);
+        $renewal = CredentialDocument::factory()->create([
+            'employee_id' => $employee->id,
+            'qualification_id' => $qualification->id,
+            'issued_at' => '2026-11-11',
+            'expires_at' => '2027-11-11',
+        ]);
+
+        $this->artisan('checkpoint:reconcile-compliance')->assertSuccessful();
+        $this->artisan('checkpoint:reconcile-compliance')->assertSuccessful();
+
+        $this->assertSame(1, $employee->notifications()->count());
+        $this->assertSame(1, $manager->notifications()->count());
+        $alert = $employee->notifications()->firstOrFail();
+        $this->assertSame('expired', $alert->data['event']);
+        $this->assertSame($expired->id, $alert->data['document_id']);
+        $this->assertSame(CredentialStatus::Pending, $renewal->fresh()->status);
+        $this->actingAs($employee)->get('/notifications')->assertOk()->assertSee('Expired')->assertDontSee('No longer current');
+
+        $renewal->forceFill(['status' => CredentialStatus::Approved])->save();
+        $this->get('/notifications')->assertOk()->assertSee('No longer current');
+        $this->artisan('checkpoint:reconcile-compliance')->assertSuccessful();
+
+        $this->assertSame(1, $employee->notifications()->count());
+        $this->assertSame($alert->id, $employee->notifications()->firstOrFail()->id);
+    }
+
     public function test_removed_requirement_inactive_staff_and_non_required_evidence_do_not_send_alerts(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-11-11 12:00', 'Asia/Manila'));

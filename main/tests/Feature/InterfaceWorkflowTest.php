@@ -73,7 +73,7 @@ class InterfaceWorkflowTest extends TestCase
     }
 
     #[DataProvider('pendingCredentialApprovalCases')]
-    public function test_pending_submission_guidance_reflects_current_valid_approval(string $previousApproval): void
+    public function test_pending_submission_guidance_distinguishes_previous_approval_states(string $previousApproval): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-11-10 12:00', 'Asia/Manila'));
         $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
@@ -96,6 +96,14 @@ class InterfaceWorkflowTest extends TestCase
                 'issued_at' => '2026-01-01',
                 'expires_at' => '2026-11-09',
             ]);
+        } elseif ($previousApproval === 'invalid') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-11-11',
+                'expires_at' => '2027-01-01',
+            ]);
         }
 
         CredentialDocument::factory()->create([
@@ -108,10 +116,16 @@ class InterfaceWorkflowTest extends TestCase
 
         if ($previousApproval === 'valid') {
             $response->assertSee('An earlier valid approval remains in effect.')
-                ->assertDontSee('no currently valid approval is in place.');
+                ->assertDontSee('The previous approval has expired');
+        } elseif ($previousApproval === 'expired') {
+            $response->assertSee('The previous approval has expired; this renewal is awaiting review.')
+                ->assertDontSee('No credential has been approved yet');
+        } elseif ($previousApproval === 'invalid') {
+            $response->assertSee('An approved credential is not currently valid; this submission is awaiting review.')
+                ->assertDontSee('No credential has been approved yet');
         } else {
-            $response->assertSee('Pending evidence is awaiting review; no currently valid approval is in place.')
-                ->assertDontSee('An earlier valid approval remains in effect.');
+            $response->assertSee('No credential has been approved yet; this submission is awaiting review.')
+                ->assertDontSee('The previous approval has expired');
         }
     }
 
@@ -121,6 +135,7 @@ class InterfaceWorkflowTest extends TestCase
             'valid previous approval' => ['valid'],
             'no previous approval' => ['none'],
             'expired previous approval' => ['expired'],
+            'approved but not yet valid' => ['invalid'],
         ];
     }
 
