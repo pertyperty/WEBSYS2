@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\AuditFinding;
 use App\Models\CredentialDocument;
+use App\Models\EmployeeTraining;
 use App\Models\Facility;
 use App\Models\JobRole;
 use App\Models\Qualification;
+use App\Models\TrainingCourse;
 use App\Models\User;
 use DOMDocument;
 use DOMXPath;
@@ -50,6 +52,20 @@ class InterfaceWorkflowTest extends TestCase
         $this->actingAs($employee)->get('/dashboard')->assertOk()->assertSee('Your next steps')
             ->assertSee(route('employees.show', $employee), false)->assertDontSee('Accounts &amp; access', false)
             ->assertViewHas('ownAssessment', fn (array $result): bool => $result['employee_id'] === $employee->id && $result['status'] === 'not_eligible');
+    }
+
+    public function test_staff_can_submit_evidence_while_required_training_is_pending(): void
+    {
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $qualification = Qualification::factory()->requiringTraining()->create();
+        $employee->jobRole->qualifications()->attach($qualification);
+        $course = TrainingCourse::factory()->published()->for($qualification)->create();
+        EmployeeTraining::factory()->for($employee, 'employee')->for($course, 'trainingCourse')->create();
+
+        $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
+            ->assertSee(route('training-courses.index'), false)
+            ->assertSee(route('credentials.create', ['qualification' => $qualification->id]), false)
+            ->assertSee('You can submit evidence while training is pending, but it cannot be approved until the required training is completed.');
     }
 
     public function test_form_controls_have_labels_across_current_workflows(): void
