@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CredentialStatus;
 use App\Enums\UserRole;
 use App\Models\Audit;
 use App\Models\AuditFinding;
@@ -12,9 +13,11 @@ use App\Models\JobRole;
 use App\Models\Qualification;
 use App\Models\TrainingCourse;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class InterfaceWorkflowTest extends TestCase
@@ -67,6 +70,58 @@ class InterfaceWorkflowTest extends TestCase
             ->assertSee(route('training-courses.index'), false)
             ->assertSee(route('credentials.create', ['qualification' => $qualification->id]), false)
             ->assertSee('You can submit evidence while training is pending, but it cannot be approved until the required training is completed.');
+    }
+
+    #[DataProvider('pendingCredentialApprovalCases')]
+    public function test_pending_submission_guidance_reflects_current_valid_approval(string $previousApproval): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 12:00', 'Asia/Manila'));
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $qualification = Qualification::factory()->create();
+        $employee->jobRole->qualifications()->attach($qualification);
+
+        if ($previousApproval === 'valid') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-01-01',
+                'expires_at' => '2027-01-01',
+            ]);
+        } elseif ($previousApproval === 'expired') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-01-01',
+                'expires_at' => '2026-11-09',
+            ]);
+        }
+
+        CredentialDocument::factory()->create([
+            'employee_id' => $employee->id,
+            'qualification_id' => $qualification->id,
+            'status' => CredentialStatus::Pending,
+        ]);
+
+        $response = $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk();
+
+        if ($previousApproval === 'valid') {
+            $response->assertSee('An earlier valid approval remains in effect.')
+                ->assertDontSee('no currently valid approval is in place.');
+        } else {
+            $response->assertSee('Pending evidence is awaiting review; no currently valid approval is in place.')
+                ->assertDontSee('An earlier valid approval remains in effect.');
+        }
+    }
+
+    public static function pendingCredentialApprovalCases(): array
+    {
+        return [
+            'valid previous approval' => ['valid'],
+            'no previous approval' => ['none'],
+            'expired previous approval' => ['expired'],
+        ];
     }
 
     public function test_form_controls_have_labels_across_current_workflows(): void

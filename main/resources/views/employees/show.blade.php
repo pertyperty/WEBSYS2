@@ -40,7 +40,16 @@
                     <x-status-badge :status="$item['state']" />
                 </div>
                 @if($item['expiring_soon'])<p class="mt-2 text-xs font-semibold text-amber-800">Expiring soon: {{ $item['expires_at'] }}</p>@endif
-                @if($item['pending_count'])<p class="mt-1.5 text-xs text-slate-500">{{ $item['pending_count'] }} pending {{ \Illuminate\Support\Str::plural('review', $item['pending_count']) }} (existing approval still applies).</p>@endif
+                @if($item['pending_count'])
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        {{ $item['pending_count'] }} pending {{ \Illuminate\Support\Str::plural('review', $item['pending_count']) }}.
+                        @if($item['state'] === 'satisfied')
+                            An earlier valid approval remains in effect.
+                        @else
+                            Pending evidence is awaiting review; no currently valid approval is in place.
+                        @endif
+                    </p>
+                @endif
                 @if(auth()->id() === $employee->id)
                     @can('submit-credentials')
                         @if($item['requires_training'] && ! $item['training_completed'])
