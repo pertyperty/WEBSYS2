@@ -1,39 +1,40 @@
-<x-layout title="Manage training course">
-    <a href="{{ route('training-courses.index') }}" class="text-sm font-semibold text-teal-800 underline">Back to courses</a>
-    <h1 class="mb-6 mt-4 text-3xl font-bold">{{ $course->exists ? 'Edit course' : 'Add course' }}</h1>
+<x-layout :title="$course->exists ? 'Edit course' : 'Add course'">
+    <a href="{{ route('training-courses.index') }}" class="back-link"><x-icon name="arrow-left" class="size-4" />Course catalog</a>
+    <div class="page-heading mt-3">
+        <div><h1 class="text-2xl font-bold sm:text-3xl">{{ $course->exists ? 'Edit course' : 'Add course' }}</h1></div>
+    </div>
     <form method="POST" action="{{ $course->exists ? route('training-courses.update', $course) : route('training-courses.store') }}" class="panel max-w-2xl space-y-5">
         @csrf
         @if($course->exists)
             @method('PUT')
         @endif
+        <x-input name="title" label="Course title" :value="$course->title" maxlength="255" required />
         <div>
-            <label for="title" class="text-sm font-medium">Course title</label>
-            <input id="title" name="title" type="text" value="{{ old('title', $course->title) }}" class="field" maxlength="255" required>
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="field" rows="4" maxlength="5000">{{ old('description', $course->description) }}</textarea>
         </div>
         <div>
-            <label for="description" class="text-sm font-medium">Description</label>
-            <textarea id="description" name="description" class="field" rows="5" maxlength="5000">{{ old('description', $course->description) }}</textarea>
-        </div>
-        <div>
-            <label for="qualification_id" class="text-sm font-medium">Training qualification</label>
+            <label for="qualification_id">Qualification</label>
             <select id="qualification_id" name="qualification_id" class="field" required>
-                <option value="">Select a qualification</option>
+                <option value="" disabled @selected(! old('qualification_id', $course->qualification_id))>Select a qualification</option>
                 @foreach($qualifications as $qualification)
-                    <option value="{{ $qualification->id }}" @selected(old('qualification_id', $course->qualification_id) == $qualification->id)>{{ $qualification->name }} / {{ $qualification->safetyDomain->name }}</option>
+                    <option value="{{ $qualification->id }}" @selected(old('qualification_id', $course->qualification_id) == $qualification->id)>{{ $qualification->name }} ({{ $qualification->safetyDomain->name }})</option>
                 @endforeach
             </select>
-            <p class="mt-2 text-xs text-slate-500">The qualification cannot change after anyone enrolls.</p>
+            <p class="field-help">Locked once anyone enrolls.</p>
         </div>
         <div>
-            <label for="status" class="text-sm font-medium">Publication status</label>
+            <label for="status">Status</label>
             <select id="status" name="status" class="field">
                 @foreach($statuses as $status)
                     <option value="{{ $status->value }}" @selected(old('status', $course->status->value) === $status->value)>{{ ucfirst($status->value) }}</option>
                 @endforeach
             </select>
-            <p class="mt-2 text-xs text-slate-500">Only published courses accept enrollment. Archived courses remain in history.</p>
+            <p class="field-help">Only published courses accept enrollments.</p>
         </div>
-        <button type="submit" class="button">Save course</button>
-        <a href="{{ route('training-courses.index') }}" class="button-secondary">Cancel</a>
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button type="submit" class="button">Save course</button>
+            <a href="{{ route('training-courses.index') }}" class="button-secondary">Cancel</a>
+        </div>
     </form>
 </x-layout>

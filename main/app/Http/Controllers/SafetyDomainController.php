@@ -27,7 +27,7 @@ class SafetyDomainController extends Controller
     {
         SafetyDomain::create($request->validated());
 
-        return to_route('safety-domains.index')->with('status', 'Record created.');
+        return to_route('safety-domains.index')->with('status', 'Safety domain created.');
     }
 
     public function edit(SafetyDomain $safetyDomain): View
@@ -41,6 +41,6 @@ class SafetyDomainController extends Controller
     {
         $safetyDomain->update($request->validated());
 
-        return to_route('safety-domains.index')->with('status', 'Record updated.');
+        return to_route('safety-domains.index')->with('status', 'Safety domain updated.');
     }
 }

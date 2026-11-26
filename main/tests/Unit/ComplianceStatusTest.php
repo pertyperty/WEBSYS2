@@ -15,4 +15,12 @@ class ComplianceStatusTest extends TestCase
     {
         $this->assertSame($label, ComplianceStatus::from($value)->label());
     }
+
+    #[TestWith(['eligible', 'Cleared for duty'])]
+    #[TestWith(['not_eligible', 'Restricted from duty'])]
+    #[TestWith(['not_assessable', 'Duty status pending'])]
+    public function test_duty_labels_match_compliance_status(string $value, string $label): void
+    {
+        $this->assertSame($label, ComplianceStatus::from($value)->dutyLabel());
+    }
 }

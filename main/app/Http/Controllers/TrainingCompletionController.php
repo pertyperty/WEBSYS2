@@ -33,6 +33,7 @@ class TrainingCompletionController extends Controller
             $history->handle($employee, 'training_completion', $request->user());
         });
 
-        return to_route('training-enrollments.index')->with('status', 'Completion recorded. Approved evidence is still required for compliance.');
+        return to_route('training-enrollments.index', $request->validated('filters', []))
+            ->with('status', 'Completion recorded. Approved evidence is still required for compliance.');
     }
 }

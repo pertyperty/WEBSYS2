@@ -33,7 +33,8 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(6, User::distinct()->count('role'));
         $this->assertSame(18, User::whereNotNull('facility_id')->distinct()->count('facility_id'));
         $admin = User::where('email', 'admin@checkpoint.example')->firstOrFail();
-        $this->assertFalse(Hash::check('password', $admin->password));
+        $this->assertTrue(Hash::check('checkpoint123', $admin->password));
+        $this->assertSame(220, User::all()->filter(fn (User $user): bool => Hash::check('checkpoint123', $user->password))->count());
         $document = CredentialDocument::firstOrFail();
         Storage::disk('local')->assertExists($document->private_path);
         $this->actingAs($document->employee)->get('/credentials/'.$document->id.'/download')->assertOk()->assertDownload();

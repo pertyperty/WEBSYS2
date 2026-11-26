@@ -15,17 +15,61 @@ export function liveFilters(options = {}) {
     const entries = options.entries ?? (form => new FormData(form));
     const location = options.location ?? globalThis.location;
     const history = options.history ?? globalThis.history;
+    const browser = options.browser ?? globalThis.window;
     let timer;
     let controller;
     let revision = 0;
+    let submitting = false;
+    let beforeUnload;
+    let restored;
+    let submittingForm;
+    let leaving;
+    let reloading;
+    let previousFocus;
 
     return {
-        ready: false, busy: false, composing: false, error: '', message: '', reportType: 'readiness', downloadUrl: '', resultsUrl: '',
+        ready: false, busy: false, composing: false, error: '', message: '', reportType: 'readiness', downloadUrl: '', resultsUrl: '', leaveUrl: '', leaveIntent: '',
         init() {
             this.resultsUrl = location.href;
             this.ready = Boolean(this.$root.querySelector('[data-filter-form]') && this.$root.querySelector('[data-filter-results]'));
             this.reportType = this.$root.querySelector('[name="type"]')?.value ?? 'readiness';
             this.downloadUrl = this.$root.querySelector('[data-filter-download]')?.href ?? '';
+            if (browser && options.protectCompletion) {
+                beforeUnload = event => {
+                    if (!submitting && this.hasPendingEdits()) {
+                        event.preventDefault();
+                        event.returnValue = '';
+                    }
+                };
+                restored = () => { submitting = false; };
+                leaving = event => {
+                    const link = event.target.closest('a');
+                    if (!link || event.defaultPrevented || link.target === '_blank' || link.hasAttribute('download')
+                        || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    const url = new URL(link.href, location.href);
+                    const action = new URL(this.$root.querySelector('[data-filter-form]').action);
+                    if (url.origin === action.origin && url.pathname === action.pathname) return;
+                    if (this.hasPendingEdits()) {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        this.requestLeaving(url.href);
+                    }
+                };
+                reloading = event => {
+                    if ((event.key === 'F5' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r')) && this.hasPendingEdits()) {
+                        event.preventDefault();
+                        this.requestLeaving('', 'reload');
+                    }
+                };
+                submittingForm = event => {
+                    if (event.target.matches('[data-filter-edit-form]') && !event.defaultPrevented) submitting = true;
+                };
+                browser.addEventListener('beforeunload', beforeUnload);
+                browser.addEventListener('pageshow', restored);
+                browser.document?.addEventListener('click', leaving, true);
+                browser.document?.addEventListener('keydown', reloading, true);
+                this.$root.addEventListener('submit', submittingForm);
+            }
         },
         cancel() {
             clearTimeout(timer);
@@ -55,9 +99,30 @@ export function liveFilters(options = {}) {
             this.composing = false;
             this.typing(event);
         },
-        keepPendingEdits() {
+        hasPendingEdits() {
             const fields = this.$root.querySelectorAll('[data-filter-edit-form] input:not([type="hidden"]), [data-filter-edit-form] textarea');
-            if (![...fields].some(field => field.value.trim() !== '')) return false;
+            return [...fields].some(field => field.value.trim() !== '');
+        },
+        requestLeaving(url, intent = 'navigate') {
+            previousFocus = browser.document?.activeElement;
+            this.leaveUrl = url;
+            this.leaveIntent = intent;
+            this.$root.querySelector('[data-unsaved-dialog]').showModal();
+        },
+        cancelLeaving() {
+            this.$root.querySelector('[data-unsaved-dialog]').close();
+            this.leaveUrl = '';
+            this.leaveIntent = '';
+            previousFocus?.focus();
+        },
+        confirmLeaving() {
+            submitting = true;
+            this.$root.querySelector('[data-unsaved-dialog]').close();
+            if (this.leaveIntent === 'reload') location.reload();
+            else location.assign(this.leaveUrl);
+        },
+        keepPendingEdits() {
+            if (!this.hasPendingEdits()) return false;
             this.cancel();
             this.busy = false;
             this.restoreFields(new URL(this.resultsUrl));
@@ -148,6 +213,13 @@ export function liveFilters(options = {}) {
         },
         destroy() {
             this.cancel();
+            if (beforeUnload) {
+                browser.removeEventListener('beforeunload', beforeUnload);
+                browser.removeEventListener('pageshow', restored);
+                browser.document?.removeEventListener('click', leaving, true);
+                browser.document?.removeEventListener('keydown', reloading, true);
+                this.$root.removeEventListener('submit', submittingForm);
+            }
         },
     };
 }

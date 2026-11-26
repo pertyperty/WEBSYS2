@@ -1,33 +1,34 @@
-<x-layout title="Edit Facilities">
-    <a href="{{ route('facilities.index') }}" class="text-sm font-semibold text-teal-800 underline">Back to Facilities</a>
-    <h1 class="mb-6 mt-4 text-3xl font-bold">{{ $facility->exists ? 'Edit facility' : 'Add facility' }}</h1>
+<x-layout :title="$facility->exists ? 'Edit facility' : 'Add facility'">
+    <a href="{{ route('facilities.index') }}" class="back-link"><x-icon name="arrow-left" class="size-4" />Facilities</a>
+    <div class="page-heading mt-3">
+        <div><h1 class="text-2xl font-bold sm:text-3xl">{{ $facility->exists ? 'Edit facility' : 'Add facility' }}</h1></div>
+    </div>
     <form method="POST" action="{{ $facility->exists ? route('facilities.update', $facility) : route('facilities.store') }}" class="panel max-w-2xl space-y-5">
         @csrf
         @if($facility->exists)
             @method('PUT')
         @endif
+        <x-input name="name" label="Name" :value="$facility->name" maxlength="255" required />
         <div>
-            <label for="name" class="text-sm font-medium">Name</label>
-            <input id="name" name="name" type="text" class="field" maxlength="255" value="{{ old('name', $facility->name) }}" required>
-        </div>
-        <div>
-            <label for="region_id" class="text-sm font-medium">Region</label>
+            <label for="region_id">Region</label>
             <select id="region_id" name="region_id" class="field" required>
-                <option value="" disabled>Select a region</option>
+                <option value="" disabled @selected(! old('region_id', $facility->region_id))>Select a region</option>
                 @foreach($regions as $region)
                     <option value="{{ $region->id }}" @selected(old('region_id', $facility->region_id) == $region->id)>{{ $region->name }}</option>
                 @endforeach
             </select>
         </div>
         <div>
-            <label for="is_active" class="text-sm font-medium">Availability</label>
+            <label for="is_active">Status</label>
             <select id="is_active" name="is_active" class="field">
                 <option value="1" @selected(old('is_active', $facility->is_active))>Active</option>
                 <option value="0" @selected(! old('is_active', $facility->is_active))>Inactive</option>
             </select>
+            <p class="field-help">Inactive records remain in history.</p>
         </div>
-        <p class="field-help">Inactive records stay in history. Remove active dependencies before deactivating.</p>
-        <button type="submit" class="button">Save facility</button>
-        <a href="{{ route('facilities.index') }}" class="button-secondary">Cancel</a>
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button type="submit" class="button">Save facility</button>
+            <a href="{{ route('facilities.index') }}" class="button-secondary">Cancel</a>
+        </div>
     </form>
 </x-layout>

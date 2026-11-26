@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Actions\CreateSyntheticDataset;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class SyntheticDatasetSeeder extends Seeder
 {
@@ -17,7 +16,7 @@ class SyntheticDatasetSeeder extends Seeder
             return;
         }
 
-        $counts = $dataset->handle(Str::password(32));
-        $this->command?->info(array_sum($counts).' synthetic records created using factories. Account passwords are random; use the local password-reset flow to sign in.');
+        $counts = $dataset->handle('checkpoint123');
+        $this->command?->info(array_sum($counts).' synthetic records created using factories. New local sample accounts use the documented classroom password. Existing accounts are never updated.');
     }
 }

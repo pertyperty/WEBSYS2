@@ -2,8 +2,8 @@
 @php
     $tone = match ($status) {
         'eligible', 'satisfied', 'approved', 'completed', 'active', 'published', 'resolved' => 'positive',
-        'not_eligible', 'rejected', 'expired' => 'negative',
-        'pending', 'enrolled', 'expiring_soon', 'missing', 'open', 'in_progress', 'pending_verification' => 'warning',
+        'not_eligible', 'rejected', 'expired', 'overdue' => 'negative',
+        'pending', 'enrolled', 'expiring_soon', 'missing', 'open', 'in_progress', 'pending_verification', 'unassigned' => 'warning',
         default => 'neutral',
     };
     $text = $label ?? ($status === 'pending_verification' ? 'Awaiting verification' : ucfirst(str_replace('_', ' ', $status)));

@@ -42,7 +42,8 @@ class ComplianceApiTest extends TestCase
 
         $response->assertOk()->assertExactJson(['data' => [
             'employee_reference' => $employee->verification_reference,
-            'status' => 'eligible', 'required_count' => 1, 'satisfied_count' => 1,
+            'status' => 'eligible', 'duty_status' => 'Cleared for duty',
+            'required_count' => 1, 'satisfied_count' => 1,
             'qualification_percentage' => 100, 'evaluated_on' => '2026-11-12',
             'qualifications' => [[
                 'qualification' => $qualification->name, 'domain' => $qualification->safetyDomain->name,
@@ -58,6 +59,24 @@ class ComplianceApiTest extends TestCase
         $this->requestSummary('employees/'.$employee->verification_reference, $token)->assertOk()
             ->assertJsonPath('data.status', 'not_eligible')->assertJsonPath('data.satisfied_count', 0);
         $this->assertDatabaseCount('compliance_assessments', 0);
+    }
+
+    public function test_employee_summary_returns_duty_status_for_eligible_and_not_eligible_employees(): void
+    {
+        $facility = Facility::factory()->create();
+        $job = JobRole::factory()->create();
+        $qualification = Qualification::factory()->create();
+        $job->qualifications()->attach($qualification);
+        $eligible = User::factory()->assignedTo($facility, $job)->create();
+        CredentialDocument::factory()->for($eligible, 'employee')->for($qualification)->approved()->create();
+        $notEligible = User::factory()->assignedTo($facility, $job)->create();
+        $auditor = User::factory()->role(UserRole::Auditor)->for($facility->region)->create();
+        $token = $this->tokenFor($auditor);
+
+        $this->requestSummary('employees/'.$eligible->verification_reference, $token)->assertOk()
+            ->assertJsonPath('data.duty_status', 'Cleared for duty');
+        $this->requestSummary('employees/'.$notEligible->verification_reference, $token)->assertOk()
+            ->assertJsonPath('data.duty_status', 'Restricted from duty');
     }
 
     public function test_facility_rate_counts_only_assessable_active_staff_in_that_facility(): void

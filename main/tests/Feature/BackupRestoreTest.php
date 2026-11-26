@@ -34,11 +34,11 @@ class BackupRestoreTest extends TestCase
     public function test_mysql_dump_and_private_archive_restore_preserve_access_history_and_encrypted_sessions(): void
     {
         $finder = new ExecutableFinder;
-        $mysql = $finder->find('mysql');
-        $mysqldump = $finder->find('mysqldump');
-        if (! $mysql || ! $mysqldump || ! extension_loaded('zip')) {
-            $this->markTestSkipped('Recovery rehearsal requires MySQL 8 mysql/mysqldump on PATH and PHP ZIP. No recovery result is established when skipped.');
-        }
+        $mysql = $finder->find('mysql', extraDirs: array_filter([config('operations.mysql_client_directory')]));
+        $mysqldump = $finder->find('mysqldump', extraDirs: array_filter([config('operations.mysql_client_directory')]));
+        $this->assertNotNull($mysql, 'Install MySQL 8 clients or set MYSQL_CLIENT_BIN; recovery coverage cannot be skipped.');
+        $this->assertNotNull($mysqldump, 'Install MySQL 8 clients or set MYSQL_CLIENT_BIN; recovery coverage cannot be skipped.');
+        $this->assertTrue(extension_loaded('zip'), 'Enable PHP ZIP; recovery coverage cannot be skipped.');
         Storage::fake('local');
         $disk = Storage::disk('local');
         $disk->makeDirectory('recovery');

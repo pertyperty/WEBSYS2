@@ -16,4 +16,13 @@ enum ComplianceStatus: string
             self::NotAssessable => 'Not assessable',
         };
     }
+
+    public function dutyLabel(): string
+    {
+        return match ($this) {
+            self::Eligible => 'Cleared for duty',
+            self::NotEligible => 'Restricted from duty',
+            self::NotAssessable => 'Duty status pending',
+        };
+    }
 }

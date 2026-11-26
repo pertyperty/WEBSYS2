@@ -99,7 +99,7 @@ test('finding assignment exposes only managers of the selected facility', () => 
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'fresh' })) {
+function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'fresh' }), extraOptions = {}) {
     const fields = [
         { name: 'search', value: '', type: 'search', tagName: 'INPUT' },
         { name: 'status', value: '', type: 'select-one', tagName: 'SELECT' },
@@ -112,19 +112,20 @@ function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'f
     const location = { href: form.action, origin: 'http://checkpoint.test', assign(url) { this.assigned = url; } };
     const history = { updates: [], replaceState(_state, _title, url) { location.href = url; }, pushState(_state, _title, url) { this.updates.push(url); location.href = url; } };
     const editFields = [];
-    const root = { querySelectorAll: () => editFields, querySelector(selector) {
+    const rootHandlers = {};
+    const root = { addEventListener: (name, handler) => rootHandlers[name] = handler, removeEventListener: name => delete rootHandlers[name], querySelectorAll: () => editFields, querySelector(selector) {
         return ({ '[data-filter-form]': form, '[data-filter-results]': results, '[data-filter-download]': download,
-            '[name="type"]': fields[2] })[selector];
+            '[name="type"]': fields[2], '[data-unsaved-dialog]': extraOptions.dialog })[selector];
     } };
     const model = liveFilters({ fetch: fetchPage, entries: () => fields.map(field => [field.name, field.value]),
         location, history, parse: html => ({ querySelector(selector) {
             if (selector === '[data-filter-download]') return { href: 'http://checkpoint.test/reports/download?type=findings' };
             if (selector === '[data-filter-results]') return { childNodes: [html], querySelector: () => ({ textContent: '3 matching rows' }) };
-        } }),
+        } }), ...extraOptions,
     });
     model.$root = root;
     model.init();
-    return { model, fields, results, download, location, history, editFields };
+    return { model, fields, results, download, location, history, editFields, rootHandlers };
 }
 
 test('filter URLs trim text, encode special characters and remove obsolete pagination', () => {
@@ -339,4 +340,97 @@ test('cleared completion fields allow filtering and Back cannot silently discard
     await model.apply();
     assert.deepEqual(results.nodes, ['fresh']);
     assert.equal(model.error, '');
+});
+
+
+test('unfinished completion details warn on reload or leaving and clear fields stop the warning', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { model, editFields } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: 'Assessment notes' });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+    assert.equal(event.returnValue, '');
+    editFields[0].value = '';
+    const clean = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(clean);
+    assert.equal(clean.prevented, undefined);
+    model.destroy();
+    assert.deepEqual(handlers, {});
+});
+
+test('valid completion submission can leave while a restored page protects its pending entries again', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { editFields, rootHandlers } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: '2026-11-17' });
+    rootHandlers.submit({ target: { matches: () => true }, defaultPrevented: false });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, undefined);
+    handlers.pageshow();
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+});
+
+test('prevented submissions and unrelated forms cannot silence the unfinished-entry warning', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { editFields, rootHandlers } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: 'Notes' });
+    rootHandlers.submit({ target: { matches: () => false }, defaultPrevented: false });
+    rootHandlers.submit({ target: { matches: () => true }, defaultPrevented: true });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+});
+
+
+test('in-app navigation opens a confirmation; Stay keeps details and Leave navigates', () => {
+    const handlers = {};
+    const browser = { addEventListener() {}, removeEventListener() {}, document: {
+        addEventListener: (name, handler) => handlers[name] = handler, removeEventListener() {},
+    } };
+    const dialog = { showModal() { this.open = true; }, close() { this.open = false; } };
+    const { model, editFields, location } = filterHarness(undefined, { browser, protectCompletion: true, dialog });
+    editFields.push({ value: 'Unsaved notes' });
+    const link = { href: 'http://checkpoint.test/employees', hasAttribute: () => false };
+    const event = { button: 0, target: { closest: () => link }, preventDefault() { this.prevented = true; }, stopImmediatePropagation() {} };
+    handlers.click(event);
+    assert.equal(event.prevented, true);
+    assert.equal(dialog.open, true);
+    assert.equal(location.assigned, undefined);
+    model.cancelLeaving();
+    assert.equal(dialog.open, false);
+    assert.equal(editFields[0].value, 'Unsaved notes');
+    event.defaultPrevented = false;
+    handlers.click(event);
+    model.confirmLeaving();
+    assert.equal(location.assigned, link.href);
+});
+
+test('reload shortcut confirms while clean fields and modified clicks keep normal behavior', () => {
+    const handlers = {};
+    const browser = { addEventListener() {}, removeEventListener() {}, document: {
+        addEventListener: (name, handler) => handlers[name] = handler, removeEventListener() {},
+    } };
+    const dialog = { showModal() { this.open = true; }, close() { this.open = false; } };
+    const { model, editFields, location } = filterHarness(undefined, { browser, protectCompletion: true, dialog });
+    location.reload = () => location.reloaded = true;
+    const key = { key: 'r', ctrlKey: true, preventDefault() { this.prevented = true; } };
+    handlers.keydown(key);
+    assert.equal(key.prevented, undefined);
+    editFields.push({ value: 'Date or notes' });
+    handlers.keydown(key);
+    assert.equal(key.prevented, true);
+    assert.equal(model.leaveIntent, 'reload');
+    model.confirmLeaving();
+    assert.equal(location.reloaded, true);
+    const modified = { button: 0, ctrlKey: true, target: { closest: () => ({ href: 'http://checkpoint.test/employees', hasAttribute: () => false }) }, preventDefault() { this.prevented = true; } };
+    handlers.click(modified);
+    assert.equal(modified.prevented, undefined);
 });

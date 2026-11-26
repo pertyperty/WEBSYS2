@@ -144,4 +144,43 @@ class TrainingMatrixFilterTest extends TestCase
         $this->get('/training-enrollments')->assertOk()->assertSee('Completion alone does not meet')->assertSee('View my evidence')->assertSee('Submit evidence');
         $this->get('/training-courses/'.$enrollment->training_course_id)->assertOk()->assertSee('select this qualification and completed course');
     }
+
+    public function test_completion_returns_to_the_filtered_list_without_a_stale_page_or_form_values(): void
+    {
+        $officer = User::factory()->role(UserRole::ComplianceOfficer)->create();
+        $enrollment = EmployeeTraining::factory()->create();
+        $filters = ['search' => $enrollment->employee->name, 'status' => 'enrolled', 'facility_id' => $enrollment->employee->facility_id];
+
+        $this->actingAs($officer)->get(route('training-enrollments.index', $filters))->assertOk()
+            ->assertSee('name="filters[search]"', false)->assertSee('name="filters[status]"', false)
+            ->assertSee('name="filters[facility_id]"', false);
+        $this->patch('/training-enrollments/'.$enrollment->id.'/completion?page=2', [
+            'completed_at' => now('Asia/Manila')->toDateString(), 'feedback' => 'Private completion notes', 'filters' => $filters,
+        ])->assertRedirect(route('training-enrollments.index', $filters))->assertSessionHasNoErrors();
+        $this->assertSame('completed', $enrollment->fresh()->status->value);
+        $this->assertSame($officer->id, $enrollment->fresh()->completed_by);
+        $this->assertSame('Private completion notes', $enrollment->fresh()->feedback);
+        $this->get(route('training-enrollments.index', $filters))->assertOk()
+            ->assertSee('Completion recorded')->assertSee('No enrollments match your filters')
+            ->assertViewHas('enrollments', fn ($rows): bool => $rows->total() === 0 && $rows->currentPage() === 1);
+    }
+
+    #[TestWith([['search' => ['unexpected']], 'filters.search'])]
+    #[TestWith([['search' => '12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567'], 'filters.search'])]
+    #[TestWith([['status' => 'unknown'], 'filters.status'])]
+    #[TestWith([['facility_id' => 0], 'filters.facility_id'])]
+    #[TestWith([['redirect' => 'https://example.org'], 'filters'])]
+    #[TestWith(['unexpected', 'filters'])]
+    public function test_invalid_return_filters_cannot_record_completion(array|string $filters, string $error): void
+    {
+        $officer = User::factory()->role(UserRole::ComplianceOfficer)->create();
+        $enrollment = EmployeeTraining::factory()->create();
+
+        $this->actingAs($officer)->from('/training-enrollments')->patch('/training-enrollments/'.$enrollment->id.'/completion', [
+            'completed_at' => now('Asia/Manila')->toDateString(), 'filters' => $filters,
+        ])->assertRedirect('/training-enrollments')->assertSessionHasErrors($error);
+        $this->assertSame('enrolled', $enrollment->fresh()->status->value);
+        $this->assertNull($enrollment->fresh()->completed_at);
+        $this->assertNull($enrollment->fresh()->completed_by);
+    }
 }
