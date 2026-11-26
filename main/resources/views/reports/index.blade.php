@@ -77,9 +77,7 @@
                     <label
                         for="q"
                         x-text="reportType === 'findings' ? 'Finding title' : 'Employee name'"
-                    >
-                        {{ $type === 'findings' ? 'Finding title' : 'Employee name' }}
-                    </label>
+                    >{{ $type === 'findings' ? 'Finding title' : 'Employee name' }}</label>
                     <input
                         class="field"
                         id="q"
