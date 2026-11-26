@@ -41,8 +41,19 @@
                 @can('view-credentials')
                     <a class="action-link" href="{{ route('credentials.index', ['status' => 'pending']) }}">
                         <span>
-                            <span class="block text-sm font-semibold text-slate-900">{{ $staff ? 'Pending submissions' : 'Pending document reviews' }}</span>
-                            <span class="block text-xs text-slate-500">{{ $totals['pending_documents'] }} awaiting review</span>
+                            <span class="block text-sm font-semibold text-slate-900">
+                                @if($staff)
+                                    Pending submissions
+                                @elseif(auth()->user()->can('review-credentials'))
+                                    Pending document reviews
+                                @else
+                                    Pending submissions awaiting Officer review
+                                @endif
+                            </span>
+                            <span class="block text-xs text-slate-500">
+                                {{ $totals['pending_documents'] }}
+                                {{ ! $staff && ! auth()->user()->can('review-credentials') ? 'awaiting Officer review' : 'awaiting review' }}
+                            </span>
                         </span>
                         <x-icon name="arrow" class="size-4 text-teal-800" />
                     </a>
