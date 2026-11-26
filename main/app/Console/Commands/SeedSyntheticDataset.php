@@ -10,7 +10,7 @@ use RuntimeException;
 
 class SeedSyntheticDataset extends Command
 {
-    protected $signature = 'checkpoint:seed-synthetic';
+    protected $signature = 'checkpoint:seed-synthetic {--private-password : Prompt for a private password instead of the local sample default}';
 
     protected $description = 'Append fictional classroom records locally without resetting existing data';
 
@@ -21,25 +21,29 @@ class SeedSyntheticDataset extends Command
 
             return self::FAILURE;
         }
-        if (! $this->input->isInteractive()) {
-            $this->error('Run interactively to enter a private password; no default password is provided.');
+        $password = 'checkpoint123';
+        if ($this->option('private-password')) {
+            if (! $this->input->isInteractive()) {
+                $this->error('Run interactively to enter a private password.');
 
-            return self::FAILURE;
-        }
-        $input = [
-            'password' => $this->secret('Synthetic account password (12+ characters with letters and numbers)'),
-            'password_confirmation' => $this->secret('Confirm password'),
-        ];
-        $validator = Validator::make($input, ['password' => ['required', 'confirmed', Password::default()]]);
-        if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $message) {
-                $this->error($message);
+                return self::FAILURE;
             }
+            $input = [
+                'password' => $this->secret('Synthetic account password (12+ characters with letters and numbers)'),
+                'password_confirmation' => $this->secret('Confirm password'),
+            ];
+            $validator = Validator::make($input, ['password' => ['required', 'confirmed', Password::default()]]);
+            if ($validator->fails()) {
+                foreach ($validator->errors()->all() as $message) {
+                    $this->error($message);
+                }
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
+            $password = $input['password'];
         }
         try {
-            $counts = $dataset->handle($input['password']);
+            $counts = $dataset->handle($password);
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 

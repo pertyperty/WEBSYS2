@@ -2,6 +2,14 @@
 
 CheckPoint is a Regional Safety Compliance Management System for healthcare logistics. The Laravel foundation, organization/qualification management, and training courses/enrollment are implemented. Private credentials and review history are implemented. Live compliance calculations, scoped dashboards, the qualification matrix, and material assessment history are implemented. In-app expiry alerts, fixed audit snapshots, corrective work, and scoped CSV reports are implemented. The restricted auditor API and Admin token management are implemented.
 
+## Current project status
+
+Milestones 0-7 are implemented. Desktop/mobile filtering, owner-assisted keyboard/screen-reader checks, and the recovered sign-in/download/history walkthrough have passed. Remaining release work is organization-specific production configuration and deployment acceptance. Automated test success does not establish deployment readiness. See [the current verification and remaining work](main/docs/Implementation.md#current-status).
+
+Before a status review, run `git status --short`, `git fetch origin`, and `git log -1 --oneline`, then compare `git rev-parse HEAD` with `git rev-parse origin/main`. An older branch describes an older product. If local `main` is clean and has no divergent commits, `git pull --ff-only origin main` advances it without rewriting history. Review local changes/divergence before switching or merging; never reset a checkout to make a status report match.
+
+The single [current verification summary](main/docs/Implementation.md#current-release-verification) distinguishes passed, failed, skipped, owner-assisted, and historical evidence. Older per-milestone totals belong to their dated revisions.
+
 ## Available now
 
 - Laravel 13.40, Fortify 1.41, Blade, Tailwind 4, Alpine.js, and Vite 8, with committed dependency lockfiles.
@@ -13,12 +21,12 @@ CheckPoint is a Regional Safety Compliance Management System for healthcare logi
 - Draft/published/archived courses, Staff self-enrollment, Officer-recorded completion, and scoped training progress.
 - Private PDF/JPEG/PNG submissions, protected attachment downloads, append-only submission/review events, and officer review.
 - Current qualifying-evidence selection preserves older valid approvals while renewals are pending or rejected.
-- Live employee eligibility, qualification matrix, scoped dashboard denominators, and append-only material assessment snapshots.
+- Live employee eligibility and duty-clearance labels, qualification matrix, scoped dashboard denominators, and append-only material assessment snapshots.
 - Daily Manila-time reconciliation and deduplicated staff/manager expiry alerts, with live status calculated even when scheduling stops.
 - Officer-captured facility/regional audits, fixed readiness snapshots, assigned corrective work, officer verification, and retained activity.
 - Scoped readiness, expiry, training, and findings reports with CSV downloads protected against spreadsheet formulas.
 - Regional, read-only auditor verification with Sanctum 4.4, opaque references, explicit ability checks, expiry/revocation, and rate limits; Admin manages Auditor access.
-- An opt-in local synthetic dataset with 1,690 related records, harmless downloadable evidence, all six roles, and a joined HTTP workflow test.
+- Standard fresh local/testing seeding of 1,690 related synthetic records (plus catalogs), with an optional private-password command, harmless downloadable evidence, all six roles, and a joined HTTP workflow test.
 - PHPUnit tests with an isolated MySQL database, Pint, and a GitHub Actions workflow.
 
 The target is a local classroom demo using Herd and MySQL. PostgreSQL is not used. No paid service or extra coding agent is required.
@@ -51,13 +59,23 @@ php artisan checkpoint:create-admin
 npm run build
 ```
 
-The administrator command prompts for name, unique email, and a hidden password; use a different email from the fictional seeded accounts. No default administrator password is shipped. `DatabaseSeeder` calls `CatalogSeeder` for the 18 Philippine regions/hubs and base job/qualification/course catalogs, then `SyntheticDatasetSeeder` adds 1,690 related records through factories and named relationship states on a fresh local/testing database. That includes 220 accounts, training, evidence, review history, audits, findings, and alerts. It needs no interactive input and issues no API tokens. Seeded accounts receive a random password that is never displayed; use Forgot password with local mail logging to set a chosen account's password, or use your separately created administrator.
+The administrator command prompts for name, unique email, and a hidden password; use a different email from the fictional seeded accounts. New local sample accounts have a documented classroom password; they are never created in production. `DatabaseSeeder` calls `CatalogSeeder` for the 18 Philippine regions/hubs and base job/qualification/course catalogs, then `SyntheticDatasetSeeder` adds 1,690 related records through factories and named relationship states on a fresh local/testing database. That includes 220 accounts, training, evidence, review history, audits, findings, and alerts. It needs no interactive input and issues no API tokens. New sample accounts created by seeding use `checkpoint123`, as requested by the owner. Reseeding skips existing accounts and never changes their passwords. The local accounts already in use retain their previous passwords, including the privately reset unassigned account.
 
 Synthetic population is skipped in production and whenever any account already exists. Repeat catalog seeding preserves existing configuration and history. For catalogs only, run `php artisan db:seed --class=CatalogSeeder`. A grader may run `php artisan migrate:fresh --seed --no-interaction` on a dedicated empty local/testing installation; **never run that command on this populated development database**.
 
 6. From `main/`, run `herd link websys2`. Link the Laravel application directory (`main/`) in Herd; its document root must be `main/public/`. The expected local URL is `http://websys2.test`; confirm Herd's actual URL and match `APP_URL`. Use `npm run dev` for asset hot reload while working, or keep the built assets from `npm run build`.
 
 The default local disk is `storage/app/private`. Do not expose it through a public symlink. Reset messages are written to `storage/logs/laravel.log` with `MAIL_MAILER=log`; open the reset link locally to finish the flow. Daily compliance history reconciliation and in-app expiry alerts are scheduled at 00:05 Asia/Manila. Database sessions/cache are used; no queue worker is needed for the current synchronous setup.
+
+## Search and filters
+
+People, Accounts, Credentials, Corrective work, Courses, Audits, and Reports now share automatic filtering. A selection applies immediately; text search waits 400 ms after typing stops. Results refresh in place, keeping the input/cursor available. Clear filters resets the selection, result counts distinguish no matches from no records, and loading/failure messages explain what is happening. An unsuccessful request preserves the previous results and offers retry/reload.
+
+The address bar tracks applied filters; Back/Forward restores them, and a new filter starts on page one. Pagination keeps the current query. With JavaScript unavailable, the same labeled GET form provides an Update results button. Report search labels follow the report type, and CSV access waits for the matching preview to finish updating. Counts and CSV exports remain constrained by the signed-in user's scope.
+
+Search accepts literal text, including zero, percent signs, and underscores. People search includes job/facility names; Credentials includes employee/qualification/reference; Corrective work includes facility/assignee; Courses includes qualification/domain; Audits includes historical location names. Accounts adds role/account-status filters; People offers only facilities in the viewer's employee scope.
+
+The [usability comparison and verification limits](main/docs/Development-Decisions.md#search-and-filtering-review-2026-11-12) distinguish the inspected public interfaces and saved CheckPoint captures from the new interaction's automated tests. The follow-up Officer desktop/mobile and owner-assisted keyboard/screen-reader checks passed; see the current acceptance record.
 
 ## First walkthrough
 
@@ -87,7 +105,7 @@ npm run build
 
 Tests use MySQL and may recreate tables in `checkpoint_test`. The test bootstrap refuses any other database name/driver or a non-testing environment. Always use the dedicated test credentials; never point a development database at that name. GitHub Actions provisions a disposable MySQL service and runs tests, validation, formatting checks, and the asset build.
 
-The current application is verified with **303 tests and 2,218 assertions** against MySQL80 on port 3306. Dedicated accounts isolate `checkpoint` from `checkpoint_test`; credentials stay in ignored environment files. Composer validation, Pint, Blade compilation, and the production Vite build passed. Existing development migrations/data are preserved; catalog, training, and credential migrations are additive. Herd serves `main/` at `http://websys2.test`.
+Use the single [current release verification summary](main/docs/Implementation.md#current-release-verification) for passed/failed/skipped totals and browser/recovery evidence. Dedicated MySQL accounts isolate `checkpoint` from `checkpoint_test`; credentials remain in ignored environment files.
 
 ## Organization and requirements walkthrough
 
@@ -190,9 +208,9 @@ As an alternative on a separate fresh installation, migrate and run `php artisan
 php artisan checkpoint:seed-synthetic
 ```
 
-Enter and confirm a private password for the fictional accounts. There is no default password or password argument. The command is restricted to local/testing and is separate from normal seeding/deployment. It appends 1,690 related records on the baseline, with all roles, eight evidence scenarios, no-requirement/onboarding states, audits, corrective history, and expiry alerts. All 270 evidence submissions download the same harmless image marked **Synthetic evidence — Not a certificate**. No real employee/medical data or API token is generated.
+New fictional accounts use `checkpoint123` by default, including noninteractive execution. To choose a private password instead, run `php artisan checkpoint:seed-synthetic --private-password` and enter it interactively. No password argument is accepted. The command is restricted to local/testing and is separate from normal seeding/deployment. It appends 1,690 related records on the baseline, with all roles, eight evidence scenarios, no-requirement/onboarding states, audits, corrective history, and expiry alerts. All 270 evidence submissions download the same harmless image marked **Synthetic evidence — Not a certificate**. No real employee/medical data or API token is generated.
 
-Use `admin@checkpoint.example`, `officer@checkpoint.example`, and scoped `manager.01@checkpoint.example` / `director.01@checkpoint.example` accounts with the password you entered. Auditor accounts remain API-only. The [full account/scenario guide and per-table counts](main/docs/Implementation.md#synthetic-dataset-and-classroom-walkthrough) explain all addresses, scope numbering, and the defense walkthrough. Dates are relative to creation and age normally.
+Use `admin@checkpoint.example`, `officer@checkpoint.example`, and scoped `manager.01@checkpoint.example` / `director.01@checkpoint.example` accounts with `checkpoint123` on a newly default-seeded installation, or the private password entered with `--private-password`. Auditor accounts remain API-only. The [full account/scenario guide and per-table counts](main/docs/Implementation.md#synthetic-dataset-and-classroom-walkthrough) explain all addresses, scope numbering, and the defense walkthrough. Dates are relative to creation and age normally.
 
 The command requires 18 active regional facility scopes. It preserves existing records/configuration and refuses to rerun or reuse conflicting reserved addresses/catalog names; it never resets used sample accounts or histories. Test execution verified the counts and rollback on isolated MySQL. This checkout's local database was populated on 2026-11-11 using privately supplied input: 1,690 added records and 223 total accounts, preserving the original three. There are 270 submissions, 18 audits, 72 findings, and zero API tokens. Do not rerun setup here; use the existing accounts with the private password you selected. Fresh installations can use the standard noninteractive seeder or the alternative private-password command above.
 
@@ -245,12 +263,29 @@ From `main/`, with MySQL 8 clients on PATH and PHP ZIP enabled:
 php artisan test --compact tests/Feature/PasswordResetLogTest.php tests/Feature/InvalidateRestoredAccessTest.php tests/Feature/BackupRestoreTest.php
 ```
 
-On this Windows installation, the clients are in `C:\Program Files\MySQL\MySQL Server 8.0\bin`; add that directory to PATH for the test process if needed. The `recovery` test group skips with an explicit explanation if either client or PHP ZIP is unavailable; a skipped test does not establish recovery. It uses `DatabaseMigrations` so an external dump sees committed fixtures. The existing test bootstrap and a second guard immediately before schema removal require MySQL `checkpoint_test`. Run it alone or in the normal serial suite, never concurrently with another process using that database. No development schema, accounts, logs, files, or service state are changed.
+On this Windows installation, the clients are in `C:\Program Files\MySQL\MySQL Server 8.0\bin`; add that directory to PATH for the test process if needed. The `recovery` test group fails if either client or PHP ZIP is unavailable; PHPUnit also fails the suite on any skipped test. Configure `MYSQL_CLIENT_BIN` when clients are outside PATH; the standard MySQL 8 Windows directory is detected automatically. It uses `DatabaseMigrations` so an external dump sees committed fixtures. The existing test bootstrap and a second guard immediately before schema removal require MySQL `checkpoint_test`. Run it alone or in the normal serial suite, never concurrently with another process using that database. No development schema, accounts, logs, files, or service state are changed.
 
-These automated checks do not replace the remaining human desktop/mobile walkthroughs or a recovery rehearsal into a separate checkout/database using an actual retained backup. The local synthetic dataset is now loaded; its password remains private. Other installations require their own private setup.
+These automated checks complement the completed human desktop/mobile walkthroughs and recovery rehearsal into a separate checkout/database using an actual retained backup. Repeat acceptance against the intended deployment environment before release. The existing local dataset retains its original passwords. Only newly seeded sample accounts use the new default; production seeding never creates these accounts.
 
-The local Manager-to-Officer browser walkthrough passed on 2026-11-11 at desktop/mobile viewport sizes: fictional finding #1 progressed through Manager submission to independent Officer resolution, retaining three activity entries. Cross-facility access returned 404. Its sample title remains the original fixture title; the status badge and activity show its current resolved state. See the [acceptance evidence and remaining checks](main/docs/Implementation.md#manager-and-officer-acceptance-follow-up). The merged baseline passed 255 PHP tests / 2,023 assertions, eight JavaScript tests, the production asset build, and strict Composer validation; focused tests cover the subsequent resolved-state form fix.
+The local Manager-to-Officer browser walkthrough passed on 2026-11-11 at desktop/mobile viewport sizes: fictional finding #1 progressed through Manager submission to independent Officer resolution, retaining three activity entries. Cross-facility access returned 404. Its sample title remains the original fixture title; the status badge and activity show its current resolved state. See the [acceptance evidence and remaining checks](main/docs/Implementation.md#manager-and-officer-acceptance-follow-up). Historical automated totals are retained in the dated milestone log; current release totals appear only in the verification summary.
 
-The owner confirmed the private password-reset and subsequent sign-in for `unassigned@checkpoint.example` passed on 2026-11-11. That account now uses its new private password instead of the shared sample password. The retained backup was restored into the separate `checkpoint_recovery` database/site on 2026-11-12: all 26 table counts and four private-file hashes matched, and restored access was invalidated before reopening. Fresh recovery sign-in/protected-download/history checks remain outstanding; see the [rehearsal record](main/docs/Implementation.md#retained-backup-rehearsal).
+The owner confirmed the private password-reset and subsequent sign-in for `unassigned@checkpoint.example` passed on 2026-11-11. That account now uses its new private password instead of the shared sample password. The retained backup was restored into the separate `checkpoint_recovery` database/site on 2026-11-12: all 26 table counts and four private-file hashes matched, and restored access was invalidated before reopening. Fresh recovery Officer sign-in, protected download, and retained review/finding history passed on 2026-11-17; see the [rehearsal record](main/docs/Implementation.md#retained-backup-rehearsal).
 
-Before a real deployment, complete the remaining human workflow/restore checks, configure HTTPS and real mail delivery, set `APP_ENV=production` and `APP_DEBUG=false`, keep the synthetic accounts out of the production database, and arrange the once-per-minute scheduler plus private backups. A production deployment is a separate decision; no hosting or paid service was added here.
+Before a real deployment, retain the recorded workflow/restore evidence, configure HTTPS and real mail delivery, set `APP_ENV=production` and `APP_DEBUG=false`, keep the synthetic accounts out of the production database, and arrange the once-per-minute scheduler plus private backups. A production deployment is a separate decision; no hosting or paid service was added here.
+
+
+Training progress and the qualification matrix now use automatic search/filtering with scoped assignment choices, retained pagination, and filtered result counts. Officer completion entries are protected from result replacement; Staff receive clearer training-to-evidence guidance. See [the implementation and pending desktop/mobile acceptance](main/docs/Implementation.md#training-progress-and-qualification-matrix-filters).
+
+
+## Operational monitoring
+
+The project administrator/maintainer owns operational incidents. Set `OPERATIONS_OWNER` to your actual responsible operator and `OPERATIONS_BACKUP_DIRECTORY` to a restricted retained backup directory. Then use:
+
+```powershell
+php artisan checkpoint:verify-backup --no-interaction
+php artisan checkpoint:operations-status --json --no-interaction
+```
+
+Status exits nonzero for missing, stale, unreadable, or failed scheduler/reconciliation/backup evidence and unacknowledged reported application errors. It also writes a critical Laravel log entry with the owner and safe status metadata. `--acknowledge-error` is an explicit operator action after investigation; it preserves the logs. The [operations and acceptance record](main/docs/Implementation.md#release-confidence-and-operations) explains ages, scheduled checks, local Windows tasks, incident response, backup integrity limits, and deployment requirements.
+
+Run the status command from an independent host/OS monitor as well as Laravel scheduling: a stopped scheduler cannot report its own outage. On this machine, **CheckPoint - Local scheduler** runs every minute and **CheckPoint - Operations monitor** runs independently every 15 minutes while the current Windows user is signed in. They use Herd PHP 8.4 and this checkout. Production requires an always-on scheduler and independent monitoring; these interactive-user tasks are local configuration.

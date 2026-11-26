@@ -7,6 +7,7 @@ use App\Models\EmployeeTraining;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Generator;
+use Illuminate\Database\Eloquent\Builder;
 
 class BuildComplianceReport
 {
@@ -31,12 +32,13 @@ class BuildComplianceReport
     {
         $type = $filters['type'] ?? 'readiness';
         $date = CarbonImmutable::now('Asia/Manila')->startOfDay();
+        $search = '%'.addcslashes($filters['q'] ?? '', '\\%_').'%';
         $employees = User::visibleTo($viewer)->when($filters['facility_id'] ?? null, fn ($query, $facility) => $query->where('facility_id', $facility))
-            ->when($filters['q'] ?? null, fn ($query, $search) => $query->where('name', 'like', '%'.$search.'%'));
+            ->when($search !== '%%', fn (Builder $query): Builder => $query->where('name', 'like', $search));
         if ($type === 'findings') {
             $findings = AuditFinding::visibleTo($viewer)->with(['facility', 'assignee'])
                 ->when($filters['facility_id'] ?? null, fn ($query, $facility) => $query->where('facility_id', $facility))
-                ->when($filters['q'] ?? null, fn ($query, $search) => $query->where('title', 'like', '%'.$search.'%'));
+                ->when($search !== '%%', fn (Builder $query): Builder => $query->where('title', 'like', $search));
             foreach ($findings->lazyById(100) as $finding) {
                 yield [$finding->title, $finding->facility->name, $finding->assignee->name, $finding->due_on->toDateString(),
                     $finding->status, $finding->status !== 'resolved' && $finding->due_on->toDateString() < $date->toDateString() ? 'Yes' : 'No', $finding->resolved_at?->toDateString()];

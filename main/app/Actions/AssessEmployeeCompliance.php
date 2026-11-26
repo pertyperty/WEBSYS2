@@ -24,7 +24,7 @@ class AssessEmployeeCompliance
     public function __construct(private SelectEffectiveCredential $selection) {}
 
     /**
-     * @return array{employee_id: int, employee_name: string, role: string, is_active: bool, facility_id: ?int, facility_name: ?string, region_id: ?int, region_name: ?string, job_role_id: ?int, job_role_name: ?string, status: string, reason: ?string, required_count: int, satisfied_count: int, percentage: ?float, assessed_on: string, items: array<int, array{qualification_id: int, name: string, domain: string, requires_training: bool, requires_expiry: bool, state: string, training_completed: bool, document_id: ?int, expires_at: ?string, expiring_soon: bool, pending_count: int}>}
+     * @return array{employee_id: int, employee_name: string, role: string, is_active: bool, facility_id: ?int, facility_name: ?string, region_id: ?int, region_name: ?string, job_role_id: ?int, job_role_name: ?string, status: string, reason: ?string, required_count: int, satisfied_count: int, percentage: ?float, assessed_on: string, items: array<int, array{qualification_id: int, name: string, domain: string, requires_training: bool, requires_expiry: bool, state: string, training_completed: bool, document_id: ?int, expires_at: ?string, expiring_soon: bool, pending_count: int, has_approved_credential: bool, has_expired_approval: bool}>}
      */
     public function handle(User $employee, ?CarbonImmutable $asOf = null): array
     {
@@ -57,7 +57,7 @@ class AssessEmployeeCompliance
 
     /**
      * @param  Collection<int, CredentialDocument>  $documents
-     * @return array{qualification_id: int, name: string, domain: string, requires_training: bool, requires_expiry: bool, state: string, training_completed: bool, document_id: ?int, expires_at: ?string, expiring_soon: bool, pending_count: int}
+     * @return array{qualification_id: int, name: string, domain: string, requires_training: bool, requires_expiry: bool, state: string, training_completed: bool, document_id: ?int, expires_at: ?string, expiring_soon: bool, pending_count: int, has_approved_credential: bool, has_expired_approval: bool}
      */
     private function assessQualification(User $employee, Qualification $qualification, Collection $documents, CarbonImmutable $asOf): array
     {
@@ -67,6 +67,7 @@ class AssessEmployeeCompliance
             ->sortBy([['updated_at', 'desc'], ['id', 'desc']])->first();
         $expired = $documents->contains(fn (CredentialDocument $document): bool => $document->status === CredentialStatus::Approved
             && $document->expires_at !== null && $document->expires_at->toDateString() < $asOf->toDateString());
+        $hasApprovedCredential = $documents->contains(fn (CredentialDocument $document): bool => $document->status === CredentialStatus::Approved);
         $state = match (true) {
             $effective !== null => QualificationState::Satisfied,
             $pending > 0 => QualificationState::Pending,
@@ -85,6 +86,7 @@ class AssessEmployeeCompliance
             'document_id' => $effective?->id, 'expires_at' => $effective?->expires_at?->toDateString(),
             'expiring_soon' => $effective?->expires_at !== null && $effective->expires_at->toDateString() <= $asOf->addDays(30)->toDateString(),
             'pending_count' => $pending,
+            'has_approved_credential' => $hasApprovedCredential, 'has_expired_approval' => $expired,
         ];
     }
 

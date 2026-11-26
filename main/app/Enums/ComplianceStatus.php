@@ -11,9 +11,14 @@ enum ComplianceStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Eligible => 'Eligible',
-            self::NotEligible => 'Not eligible',
-            self::NotAssessable => 'Not assessable',
+            self::Eligible => 'Requirements met',
+            self::NotEligible => 'Requirements not met',
+            self::NotAssessable => 'Assessment incomplete',
         };
+    }
+
+    public function dutyLabel(): string
+    {
+        return $this->label();
     }
 }

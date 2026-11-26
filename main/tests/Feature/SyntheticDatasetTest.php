@@ -31,7 +31,7 @@ class SyntheticDatasetTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-11-11 12:00', 'Asia/Manila'));
         $this->seed(PhilippineOrganizationSeeder::class);
 
-        $this->artisan('checkpoint:seed-synthetic')
+        $this->artisan('checkpoint:seed-synthetic', ['--private-password' => true])
             ->expectsQuestion('Synthetic account password (12+ characters with letters and numbers)', 'SyntheticPassword123')
             ->expectsQuestion('Confirm password', 'SyntheticPassword123')
             ->expectsOutputToContain('synthetic records. Existing records were preserved.')
@@ -156,14 +156,23 @@ class SyntheticDatasetTest extends TestCase
         Storage::disk('local')->assertExists('credentials/existing.txt');
     }
 
-    public function test_command_refuses_weak_passwords_and_noninteractive_execution(): void
+    public function test_default_command_uses_the_sample_password_without_interactive_input(): void
     {
-        $this->artisan('checkpoint:seed-synthetic')
+        $dataset = Mockery::mock(CreateSyntheticDataset::class);
+        $dataset->shouldReceive('handle')->once()->with('checkpoint123')->andReturn(['users' => 220]);
+        $this->app->instance(CreateSyntheticDataset::class, $dataset);
+
+        $this->artisan('checkpoint:seed-synthetic', ['--no-interaction' => true])->assertSuccessful();
+    }
+
+    public function test_private_password_option_refuses_weak_passwords_and_noninteractive_execution(): void
+    {
+        $this->artisan('checkpoint:seed-synthetic', ['--private-password' => true])
             ->expectsQuestion('Synthetic account password (12+ characters with letters and numbers)', 'weak')
             ->expectsQuestion('Confirm password', 'weak')
             ->assertFailed();
-        $this->artisan('checkpoint:seed-synthetic', ['--no-interaction' => true])
-            ->expectsOutput('Run interactively to enter a private password; no default password is provided.')
+        $this->artisan('checkpoint:seed-synthetic', ['--no-interaction' => true, '--private-password' => true])
+            ->expectsOutput('Run interactively to enter a private password.')
             ->assertFailed();
 
         $this->assertDatabaseCount('users', 0);

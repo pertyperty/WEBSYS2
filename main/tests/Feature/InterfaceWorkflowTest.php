@@ -2,16 +2,22 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CredentialStatus;
 use App\Enums\UserRole;
+use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\CredentialDocument;
+use App\Models\EmployeeTraining;
 use App\Models\Facility;
 use App\Models\JobRole;
 use App\Models\Qualification;
+use App\Models\TrainingCourse;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class InterfaceWorkflowTest extends TestCase
@@ -49,7 +55,112 @@ class InterfaceWorkflowTest extends TestCase
 
         $this->actingAs($employee)->get('/dashboard')->assertOk()->assertSee('Your next steps')
             ->assertSee(route('employees.show', $employee), false)->assertDontSee('Accounts &amp; access', false)
+            ->assertSee('Requirements not met')
+            ->assertSee('This system-calculated assessment does not independently authorize deployment.')
             ->assertViewHas('ownAssessment', fn (array $result): bool => $result['employee_id'] === $employee->id && $result['status'] === 'not_eligible');
+    }
+
+    public function test_employee_readiness_explains_the_calculated_status(): void
+    {
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $employee->jobRole->qualifications()->attach(Qualification::factory()->create());
+
+        $response = $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
+            ->assertSee('Requirements not met')
+            ->assertSee('This is a system-calculated requirements assessment, not an independent authorization for deployment.');
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument;
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new DOMXPath($document);
+        $assessmentBadges = $xpath->query(
+            "//section[contains(concat(' ', normalize-space(@class), ' '), ' panel ') and contains(concat(' ', normalize-space(@class), ' '), ' mb-6 ')]//span[contains(concat(' ', normalize-space(@class), ' '), ' status-badge ')]"
+        );
+
+        $this->assertSame(1, $assessmentBadges->length);
+    }
+
+    public function test_staff_can_submit_evidence_while_required_training_is_pending(): void
+    {
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $qualification = Qualification::factory()->requiringTraining()->create();
+        $employee->jobRole->qualifications()->attach($qualification);
+        $course = TrainingCourse::factory()->published()->for($qualification)->create();
+        EmployeeTraining::factory()->for($employee, 'employee')->for($course, 'trainingCourse')->create();
+
+        $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk()
+            ->assertSee(route('training-courses.index'), false)
+            ->assertSee(route('credentials.create', ['qualification' => $qualification->id]), false)
+            ->assertSee('You can submit evidence while training is pending, but it cannot be approved until the required training is completed.');
+    }
+
+    #[DataProvider('pendingCredentialApprovalCases')]
+    public function test_pending_submission_guidance_distinguishes_previous_approval_states(string $previousApproval): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 12:00', 'Asia/Manila'));
+        $employee = User::factory()->for(Facility::factory())->for(JobRole::factory())->create();
+        $qualification = Qualification::factory()->create();
+        $employee->jobRole->qualifications()->attach($qualification);
+
+        if ($previousApproval === 'valid') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-01-01',
+                'expires_at' => '2027-01-01',
+            ]);
+        } elseif ($previousApproval === 'expired') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-01-01',
+                'expires_at' => '2026-11-09',
+            ]);
+        } elseif ($previousApproval === 'invalid') {
+            CredentialDocument::factory()->create([
+                'employee_id' => $employee->id,
+                'qualification_id' => $qualification->id,
+                'status' => CredentialStatus::Approved,
+                'issued_at' => '2026-11-11',
+                'expires_at' => '2027-01-01',
+            ]);
+        }
+
+        CredentialDocument::factory()->create([
+            'employee_id' => $employee->id,
+            'qualification_id' => $qualification->id,
+            'status' => CredentialStatus::Pending,
+        ]);
+
+        $response = $this->actingAs($employee)->get(route('employees.show', $employee))->assertOk();
+
+        if ($previousApproval === 'valid') {
+            $response->assertSee('An earlier valid approval remains in effect.')
+                ->assertDontSee('The previous approval has expired');
+        } elseif ($previousApproval === 'expired') {
+            $response->assertSee('The previous approval has expired; this renewal is awaiting review.')
+                ->assertDontSee('No credential has been approved yet');
+        } elseif ($previousApproval === 'invalid') {
+            $response->assertSee('An approved credential is not currently valid; this submission is awaiting review.')
+                ->assertDontSee('No credential has been approved yet');
+        } else {
+            $response->assertSee('No credential has been approved yet; this submission is awaiting review.')
+                ->assertDontSee('The previous approval has expired');
+        }
+    }
+
+    public static function pendingCredentialApprovalCases(): array
+    {
+        return [
+            'valid previous approval' => ['valid'],
+            'no previous approval' => ['none'],
+            'expired previous approval' => ['expired'],
+            'approved but not yet valid' => ['invalid'],
+        ];
     }
 
     public function test_form_controls_have_labels_across_current_workflows(): void
@@ -121,6 +232,40 @@ class InterfaceWorkflowTest extends TestCase
         $this->actingAs($finding->audit->author)->get(route('findings.show', $finding))->assertOk()
             ->assertSee('Reopen')->assertSee('Save update')
             ->assertDontSee('No further action needed');
+    }
+
+    public function test_people_list_displays_employee_readiness_and_accounts_filter_unassigned_staff(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $facility = Facility::factory()->create(['name' => 'Manila Hub']);
+        $job = JobRole::factory()->create(['name' => 'Cold Driver']);
+        $qualification = Qualification::factory()->create();
+        $job->qualifications()->attach($qualification);
+        $assigned = User::factory()->assignedTo($facility, $job)->create(['name' => 'Assigned Staff']);
+        $unassigned = User::factory()->create(['name' => 'Waiting Staff']);
+
+        $this->actingAs($admin)->get('/employees')->assertOk()
+            ->assertSee($assigned->name)->assertSee('Requirements not met')->assertSee('0/1 met')
+            ->assertSee('Compliance statuses are system-calculated from assigned requirements; they do not independently authorize deployment.');
+        $this->get('/admin/users?assignment=unassigned')->assertOk()
+            ->assertViewHas('users', fn ($rows): bool => $rows->modelKeys() === [$unassigned->id])
+            ->assertSee('Unassigned');
+        $this->get('/admin/users?assignment=invalid')->assertSessionHasErrors('assignment');
+    }
+
+    public function test_facility_manager_finding_detail_does_not_link_to_inaccessible_regional_audit(): void
+    {
+        $facility = Facility::factory()->create();
+        $regionalAudit = Audit::factory()->create(['region_id' => $facility->region_id, 'facility_id' => null]);
+        $finding = AuditFinding::factory()->create([
+            'audit_id' => $regionalAudit->id,
+            'facility_id' => $facility->id,
+            'region_id' => $facility->region_id,
+        ]);
+
+        $this->actingAs($finding->assignee)->get(route('findings.show', $finding))->assertOk()
+            ->assertSee($regionalAudit->title)
+            ->assertDontSee(route('audits.show', $regionalAudit), false);
     }
 
     private function assertControlsHaveLabels(string $html, string $url): void

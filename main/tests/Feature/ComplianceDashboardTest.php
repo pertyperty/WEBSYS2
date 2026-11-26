@@ -36,12 +36,31 @@ class ComplianceDashboardTest extends TestCase
         EmployeeTraining::factory()->create(['employee_id' => $eligible->id]);
         EmployeeTraining::factory()->create(['employee_id' => $ineligible->id, 'status' => TrainingStatus::Completed, 'completed_at' => '2026-11-10']);
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertViewHas('totals', fn (array $totals): bool => $totals === [
+        $response = $this->actingAs($admin)->get('/dashboard')->assertOk()->assertViewHas('totals', fn (array $totals): bool => $totals === [
             'employees' => 4, 'assessable' => 2, 'eligible' => 1, 'not_eligible' => 1, 'not_assessable' => 2,
             'eligible_rate' => 50.0, 'missing' => 1, 'expired' => 0, 'expiring_soon' => 1,
             'training_incomplete' => 0, 'pending_documents' => 1, 'enrolled' => 1, 'completed' => 1,
-        ])->assertSee('1 eligible / 2 assessable staff');
+        ])->assertSee('Requirements met')->assertSee('Requirements not met')->assertSee('Assessment incomplete')
+            ->assertSee('1 of 2 assessable staff meet requirements')
+            ->assertSee('These counts are system-calculated from assigned requirements; they do not independently authorize deployment.');
+        $response->assertSee('Pending submissions awaiting Officer review')
+            ->assertSee('1 awaiting Officer review')
+            ->assertSee(route('credentials.index', ['status' => 'pending']), false)
+            ->assertDontSee('Pending document reviews')
+            ->assertDontSee('Review pending (1)');
         $this->assertDatabaseCount('compliance_assessments', 0);
+    }
+
+    public function test_compliance_officer_dashboard_keeps_credential_review_actions(): void
+    {
+        CredentialDocument::factory()->create(['status' => CredentialStatus::Pending]);
+        $officer = User::factory()->create(['role' => UserRole::ComplianceOfficer]);
+
+        $this->actingAs($officer)->get('/dashboard')->assertOk()
+            ->assertSee('Pending document reviews')
+            ->assertSee('1 awaiting review')
+            ->assertSee('Review pending (1)')
+            ->assertSee(route('credentials.index', ['status' => 'pending']), false);
     }
 
     public function test_empty_dashboard_has_no_percentage_instead_of_full_compliance(): void

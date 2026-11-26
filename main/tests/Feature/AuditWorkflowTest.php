@@ -37,7 +37,9 @@ class AuditWorkflowTest extends TestCase
         $this->assertStringNotContainsString($document->private_path, json_encode($original));
         $document->forceFill(['status' => CredentialStatus::Approved])->save();
         $employee->jobRole->qualifications()->detach();
-        $this->get('/audits/'.$audit->id)->assertOk()->assertSee('November readiness');
+        $this->get('/audits/'.$audit->id)->assertOk()->assertSee('November readiness')
+            ->assertSee('Requirements not met')
+            ->assertSee('Captured statuses are system-calculated from assigned requirements; they do not independently authorize deployment.');
         $this->assertSame($original, $audit->fresh()->snapshot);
         $this->put('/audits/'.$audit->id, ['title' => 'Changed'])->assertMethodNotAllowed();
     }

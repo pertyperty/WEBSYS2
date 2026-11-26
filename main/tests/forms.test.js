@@ -1,3 +1,4 @@
+import { liveFilters, filterUrl } from '../resources/js/filters.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assignmentForm, evidenceForm, auditScopeForm, findingAssignmentForm } from '../resources/js/forms.js';
@@ -93,4 +94,343 @@ test('finding assignment exposes only managers of the selected facility', () => 
     assert.deepEqual(form.availableManagers.map(manager => manager.id), [1]);
     form.facilityId = '';
     assert.deepEqual(form.availableManagers, []);
+});
+
+
+const flush = () => new Promise(resolve => setImmediate(resolve));
+
+function filterHarness(fetchPage = async () => ({ ok: true, text: async () => 'fresh' }), extraOptions = {}) {
+    const fields = [
+        { name: 'search', value: '', type: 'search', tagName: 'INPUT' },
+        { name: 'status', value: '', type: 'select-one', tagName: 'SELECT' },
+        { name: 'type', value: 'readiness', type: 'select-one', tagName: 'SELECT' },
+    ];
+    const form = { action: 'http://checkpoint.test/reports', elements: fields,
+        querySelector: () => fields[2] };
+    const results = { nodes: ['previous results'], replaceChildren(...nodes) { this.nodes = nodes; }, focus() { this.focused = true; }, scrollIntoView() { this.scrolled = true; } };
+    const download = { href: 'http://checkpoint.test/reports/download?type=readiness' };
+    const location = { href: form.action, origin: 'http://checkpoint.test', assign(url) { this.assigned = url; } };
+    const history = { updates: [], replaceState(_state, _title, url) { location.href = url; }, pushState(_state, _title, url) { this.updates.push(url); location.href = url; } };
+    const editFields = [];
+    const rootHandlers = {};
+    const root = { addEventListener: (name, handler) => rootHandlers[name] = handler, removeEventListener: name => delete rootHandlers[name], querySelectorAll: () => editFields, querySelector(selector) {
+        return ({ '[data-filter-form]': form, '[data-filter-results]': results, '[data-filter-download]': download,
+            '[name="type"]': fields[2], '[data-unsaved-dialog]': extraOptions.dialog })[selector];
+    } };
+    const model = liveFilters({ fetch: fetchPage, entries: () => fields.map(field => [field.name, field.value]),
+        location, history, parse: html => ({ querySelector(selector) {
+            if (selector === '[data-filter-download]') return { href: 'http://checkpoint.test/reports/download?type=findings' };
+            if (selector === '[data-filter-results]') return { childNodes: [html], querySelector: () => ({ textContent: '3 matching rows' }) };
+        } }), ...extraOptions,
+    });
+    model.$root = root;
+    model.init();
+    return { model, fields, results, download, location, history, editFields, rootHandlers };
+}
+
+test('filter URLs trim text, encode special characters and remove obsolete pagination', () => {
+    const url = filterUrl('/employees?page=9&obsolete=yes', [['search', '  cold & chain  '], ['status', ''], ['page', '9'], ['facility_id', '0']], 'http://checkpoint.test');
+    assert.equal(url.href, 'http://checkpoint.test/employees?search=cold+%26+chain&facility_id=0');
+});
+
+test('typing waits for a pause and coalesces keystrokes into one request', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const calls = [];
+    const { model, fields, results } = filterHarness(async url => { calls.push(url); return { ok: true, text: async () => 'matching rows' }; });
+    fields[0].value = 'C';
+    model.typing({ target: fields[0] });
+    t.mock.timers.tick(300);
+    fields[0].value = 'Cold';
+    model.typing({ target: fields[0] });
+    t.mock.timers.tick(399);
+    assert.equal(calls.length, 0);
+    assert.equal(model.busy, true);
+    t.mock.timers.tick(1);
+    await flush();
+    assert.equal(calls.length, 1);
+    assert.equal(new URL(calls[0]).searchParams.get('search'), 'Cold');
+    assert.deepEqual(results.nodes, ['matching rows']);
+    assert.equal(fields[0].value, 'Cold');
+    assert.equal(model.message, '3 matching rows');
+    assert.equal(model.busy, false);
+});
+
+test('a select applies immediately and cancels a queued text request', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const calls = [];
+    const { model, fields } = filterHarness(async url => { calls.push(url); return { ok: true, text: async () => 'updated' }; });
+    fields[0].value = 'Handling';
+    model.typing({ target: fields[0] });
+    fields[1].value = 'approved';
+    model.changed({ target: fields[1] });
+    assert.equal(calls.length, 1);
+    t.mock.timers.tick(1000);
+    await flush();
+    assert.equal(calls.length, 1);
+    assert.equal(new URL(calls[0]).searchParams.get('status'), 'approved');
+    assert.equal(new URL(calls[0]).searchParams.get('search'), 'Handling');
+});
+
+test('older responses cannot replace newer results or overwrite the URL', async () => {
+    const pending = [];
+    const { model, fields, results, location } = filterHarness((url, options) => new Promise(resolve => pending.push({ url, options, resolve })));
+    fields[0].value = 'old';
+    const oldRequest = model.apply();
+    fields[0].value = 'new';
+    const newRequest = model.apply();
+    assert.equal(pending[0].options.signal.aborted, true);
+    pending[1].resolve({ ok: true, text: async () => 'new rows' });
+    await newRequest;
+    pending[0].resolve({ ok: true, text: async () => 'old rows' });
+    await oldRequest;
+    assert.deepEqual(results.nodes, ['new rows']);
+    assert.equal(new URL(location.href).searchParams.get('search'), 'new');
+});
+
+test('typing invalidates an in-flight response before the next debounce finishes', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let complete;
+    const { model, fields, results } = filterHarness(() => new Promise(resolve => { complete = resolve; }));
+    const request = model.apply();
+    fields[0].value = 'next';
+    model.typing({ target: fields[0] });
+    complete({ ok: true, text: async () => 'stale rows' });
+    await request;
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.equal(model.busy, true);
+    model.destroy();
+});
+
+test('failed requests keep previous results and export URL with a retryable error', async () => {
+    const { model, results, download, history } = filterHarness(async () => ({ ok: false }));
+    await model.apply();
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.match(model.error, /previous results are still shown/);
+    assert.equal(download.href, 'http://checkpoint.test/reports/download?type=readiness');
+    assert.deepEqual(history.updates, []);
+    assert.equal(model.busy, false);
+});
+
+test('session redirects navigate to login without replacing results with a login form', async () => {
+    const { model, results, location } = filterHarness(async () => ({ redirected: true, url: 'http://checkpoint.test/login' }));
+    await model.apply();
+    assert.equal(location.assigned, 'http://checkpoint.test/login');
+    assert.deepEqual(results.nodes, ['previous results']);
+});
+
+test('clear filters resets controls and report context before fetching the unfiltered list', async () => {
+    const { model, fields, location } = filterHarness();
+    fields[0].value = 'Handling';
+    fields[1].value = 'pending';
+    fields[2].value = 'findings';
+    model.reportType = 'findings';
+    model.reset();
+    await flush();
+    assert.deepEqual(fields.map(field => field.value), ['', '', 'readiness']);
+    assert.equal(model.reportType, 'readiness');
+    assert.equal(location.href, 'http://checkpoint.test/reports');
+});
+
+test('Back and Forward restore inputs and pagination without creating another history entry', async () => {
+    const { model, fields, location, history } = filterHarness();
+    location.href = 'http://checkpoint.test/reports?search=Handling&type=findings&page=2';
+    model.restore();
+    await flush();
+    assert.equal(fields[0].value, 'Handling');
+    assert.equal(fields[2].value, 'findings');
+    assert.equal(model.reportType, 'findings');
+    assert.deepEqual(history.updates, []);
+    assert.equal(new URL(location.href).searchParams.get('page'), '2');
+});
+
+test('IME composition is not searched until the committed text is ready', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const calls = [];
+    const { model, fields } = filterHarness(async url => { calls.push(url); return { ok: true, text: async () => 'rows' }; });
+    model.startComposition();
+    fields[0].value = 'text in progress';
+    model.typing({ target: fields[0], isComposing: true });
+    t.mock.timers.tick(1000);
+    assert.equal(calls.length, 0);
+    fields[0].value = 'committed text';
+    model.endComposition({ target: fields[0] });
+    t.mock.timers.tick(400);
+    await flush();
+    assert.equal(calls.length, 1);
+    assert.equal(new URL(calls[0]).searchParams.get('search'), 'committed text');
+});
+
+test('only the returned results and matching CSV link are replaced on success', async () => {
+    const { model, fields, results, download } = filterHarness();
+    fields[2].value = 'findings';
+    const sameInput = fields[0];
+    await model.apply();
+    assert.equal(fields[0], sameInput);
+    assert.deepEqual(results.nodes, ['fresh']);
+    assert.equal(download.href, 'http://checkpoint.test/reports/download?type=findings');
+    assert.equal(model.downloadUrl, download.href);
+});
+
+
+test('pagination fetches its filtered URL and places keyboard focus on the new results', async () => {
+    const { model, results, location } = filterHarness();
+    const link = { href: 'http://checkpoint.test/reports?search=Handling&page=2', closest: () => results };
+    const event = { button: 0, target: { closest: () => link }, preventDefault() { this.defaultPrevented = true; } };
+    await model.follow(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(new URL(location.href).searchParams.get('page'), '2');
+    assert.equal(results.focused, true);
+    assert.equal(results.scrolled, true);
+});
+
+test('modified clicks and links to another workflow keep normal browser navigation', async () => {
+    const calls = [];
+    const { model, results } = filterHarness(async url => calls.push(url));
+    const other = { href: 'http://checkpoint.test/employees/1', closest: () => results };
+    const event = { button: 0, target: { closest: () => other }, preventDefault() { this.defaultPrevented = true; } };
+    await model.follow(event);
+    assert.equal(event.defaultPrevented, undefined);
+    const pagination = { href: 'http://checkpoint.test/reports?page=2', closest: () => results };
+    event.target.closest = () => pagination;
+    event.ctrlKey = true;
+    await model.follow(event);
+    assert.equal(event.defaultPrevented, undefined);
+    assert.equal(calls.length, 0);
+});
+
+
+test('filtering preserves unfinished completion details and restores the displayed filter values', async () => {
+    const calls = [];
+    const { model, fields, results, editFields, location } = filterHarness(async url => { calls.push(url); });
+    editFields.push({ value: 'Practical assessment notes' });
+    fields[0].value = 'different course';
+    await model.apply();
+    assert.equal(calls.length, 0);
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.equal(editFields[0].value, 'Practical assessment notes');
+    assert.equal(fields[0].value, '');
+    assert.equal(location.href, model.resultsUrl);
+    assert.match(model.error, /Finish recording completion/);
+    assert.equal(model.busy, false);
+});
+
+test('completion details entered during a pending fetch prevent its response from replacing the form', async () => {
+    let complete;
+    const { model, editFields, results } = filterHarness(() => new Promise(resolve => { complete = resolve; }));
+    const request = model.apply();
+    editFields.push({ value: '2026-11-13' });
+    complete({ ok: true, text: async () => 'new results' });
+    await request;
+    assert.deepEqual(results.nodes, ['previous results']);
+    assert.equal(editFields[0].value, '2026-11-13');
+    assert.equal(model.busy, false);
+});
+
+test('cleared completion fields allow filtering and Back cannot silently discard entered details', async () => {
+    const { model, editFields, results, location, fields } = filterHarness();
+    editFields.push({ value: 'notes' });
+    location.href = 'http://checkpoint.test/reports?search=older';
+    model.restore();
+    await flush();
+    assert.equal(location.href, 'http://checkpoint.test/reports');
+    assert.equal(fields[0].value, '');
+    assert.deepEqual(results.nodes, ['previous results']);
+    editFields[0].value = '';
+    fields[0].value = 'next';
+    await model.apply();
+    assert.deepEqual(results.nodes, ['fresh']);
+    assert.equal(model.error, '');
+});
+
+
+test('unfinished completion details warn on reload or leaving and clear fields stop the warning', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { model, editFields } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: 'Assessment notes' });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+    assert.equal(event.returnValue, '');
+    editFields[0].value = '';
+    const clean = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(clean);
+    assert.equal(clean.prevented, undefined);
+    model.destroy();
+    assert.deepEqual(handlers, {});
+});
+
+test('valid completion submission can leave while a restored page protects its pending entries again', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { editFields, rootHandlers } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: '2026-11-17' });
+    rootHandlers.submit({ target: { matches: () => true }, defaultPrevented: false });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, undefined);
+    handlers.pageshow();
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+});
+
+test('prevented submissions and unrelated forms cannot silence the unfinished-entry warning', () => {
+    const handlers = {};
+    const browser = { addEventListener: (name, handler) => handlers[name] = handler,
+        removeEventListener: name => delete handlers[name] };
+    const { editFields, rootHandlers } = filterHarness(undefined, { browser, protectCompletion: true });
+    editFields.push({ value: 'Notes' });
+    rootHandlers.submit({ target: { matches: () => false }, defaultPrevented: false });
+    rootHandlers.submit({ target: { matches: () => true }, defaultPrevented: true });
+    const event = { preventDefault() { this.prevented = true; } };
+    handlers.beforeunload(event);
+    assert.equal(event.prevented, true);
+});
+
+
+test('in-app navigation opens a confirmation; Stay keeps details and Leave navigates', () => {
+    const handlers = {};
+    const browser = { addEventListener() {}, removeEventListener() {}, document: {
+        addEventListener: (name, handler) => handlers[name] = handler, removeEventListener() {},
+    } };
+    const dialog = { showModal() { this.open = true; }, close() { this.open = false; } };
+    const { model, editFields, location } = filterHarness(undefined, { browser, protectCompletion: true, dialog });
+    editFields.push({ value: 'Unsaved notes' });
+    const link = { href: 'http://checkpoint.test/employees', hasAttribute: () => false };
+    const event = { button: 0, target: { closest: () => link }, preventDefault() { this.prevented = true; }, stopImmediatePropagation() {} };
+    handlers.click(event);
+    assert.equal(event.prevented, true);
+    assert.equal(dialog.open, true);
+    assert.equal(location.assigned, undefined);
+    model.cancelLeaving();
+    assert.equal(dialog.open, false);
+    assert.equal(editFields[0].value, 'Unsaved notes');
+    event.defaultPrevented = false;
+    handlers.click(event);
+    model.confirmLeaving();
+    assert.equal(location.assigned, link.href);
+});
+
+test('reload shortcut confirms while clean fields and modified clicks keep normal behavior', () => {
+    const handlers = {};
+    const browser = { addEventListener() {}, removeEventListener() {}, document: {
+        addEventListener: (name, handler) => handlers[name] = handler, removeEventListener() {},
+    } };
+    const dialog = { showModal() { this.open = true; }, close() { this.open = false; } };
+    const { model, editFields, location } = filterHarness(undefined, { browser, protectCompletion: true, dialog });
+    location.reload = () => location.reloaded = true;
+    const key = { key: 'r', ctrlKey: true, preventDefault() { this.prevented = true; } };
+    handlers.keydown(key);
+    assert.equal(key.prevented, undefined);
+    editFields.push({ value: 'Date or notes' });
+    handlers.keydown(key);
+    assert.equal(key.prevented, true);
+    assert.equal(model.leaveIntent, 'reload');
+    model.confirmLeaving();
+    assert.equal(location.reloaded, true);
+    const modified = { button: 0, ctrlKey: true, target: { closest: () => ({ href: 'http://checkpoint.test/employees', hasAttribute: () => false }) }, preventDefault() { this.prevented = true; } };
+    handlers.click(modified);
+    assert.equal(modified.prevented, undefined);
 });

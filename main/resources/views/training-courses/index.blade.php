@@ -1,5 +1,4 @@
 <x-layout title="Training courses">
-
     <div x-data="liveFilters" @popstate.window="restore()" @click="follow($event)">
 
         {{-- Page heading --}}
@@ -75,8 +74,10 @@
             <div class="record-list">
                 @forelse($courses as $course)
 
-                    <section class="record-row flex flex-wrap items-center justify-between gap-4">
-
+                    <a
+                        href="{{ route('training-courses.show', $course) }}"
+                        class="record-row group flex flex-wrap items-center justify-between gap-4"
+                    >
                         <div class="min-w-0 flex-1">
                             <h2 class="font-semibold text-slate-900">
                                 {{ $course->title }}
@@ -97,16 +98,12 @@
                             <div class="w-28 shrink-0">
                                 <x-status-badge :status="$course->status->value" />
                             </div>
-
-                            <a
-                                href="{{ route('training-courses.show', $course) }}"
-                                class="button"
-                            >
-                                View course →
-                            </a>
+                            <span class="text-sm font-semibold text-teal-800 underline group-hover:text-teal-900">
+                                View course
+                            </span>
+                            <x-icon name="arrow" class="size-4 text-slate-400 transition-colors group-hover:text-teal-800" />
                         </div>
-
-                    </section>
+                    </a>
 
                 @empty
 

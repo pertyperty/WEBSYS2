@@ -78,6 +78,8 @@ class ComplianceAssessmentTest extends TestCase
         $this->assertSame('eligible', $result['status']);
         $this->assertSame($valid->id, $result['items'][$qualification->id]['document_id']);
         $this->assertSame(1, $result['items'][$qualification->id]['pending_count']);
+        $this->assertTrue($result['items'][$qualification->id]['has_approved_credential']);
+        $this->assertTrue($result['items'][$qualification->id]['has_expired_approval']);
     }
 
     public function test_newest_valid_issue_date_then_id_selects_effective_evidence(): void
@@ -99,7 +101,10 @@ class ComplianceAssessmentTest extends TestCase
         CredentialDocument::factory()->create(['employee_id' => $employee->id, 'qualification_id' => $qualification->id, 'status' => CredentialStatus::Rejected]);
         $this->assertSame('rejected', $this->assess($employee)['items'][$qualification->id]['state']);
         CredentialDocument::factory()->create(['employee_id' => $employee->id, 'qualification_id' => $qualification->id]);
-        $this->assertSame('pending', $this->assess($employee)['items'][$qualification->id]['state']);
+        $item = $this->assess($employee)['items'][$qualification->id];
+        $this->assertSame('pending', $item['state']);
+        $this->assertTrue($item['has_approved_credential']);
+        $this->assertTrue($item['has_expired_approval']);
     }
 
     public function test_nonexpiring_evidence_and_future_issue_dates_respect_qualification_rules(): void

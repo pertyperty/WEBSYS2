@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -17,10 +18,22 @@ class TrainingCourseController extends Controller
 {
     public function index(Request $request): View
     {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::enum(CourseStatus::class)],
+        ]);
+        $search = '%'.addcslashes($filters['search'] ?? '', '\\%_').'%';
+
         return view('training-courses.index', [
             'courses' => TrainingCourse::visibleTo($request->user())->with('qualification.safetyDomain')
                 ->withCount(['enrollments' => fn (Builder $query): Builder => $query->visibleTo($request->user())])
-                ->orderBy('title')->orderBy('id')->paginate(15),
+                ->when($search !== '%%', fn (Builder $query): Builder => $query->where(fn (Builder $names): Builder => $names
+                    ->where('title', 'like', $search)
+                    ->orWhereHas('qualification', fn (Builder $qualifications): Builder => $qualifications->where(fn (Builder $details): Builder => $details
+                        ->where('name', 'like', $search)->orWhereHas('safetyDomain', fn (Builder $domains): Builder => $domains->where('name', 'like', $search))))))
+                ->when($filters['status'] ?? null, fn (Builder $query, string $status): Builder => $query->where('status', $status))
+                ->orderBy('title')->orderBy('id')->paginate(15)->withQueryString(),
+            'statuses' => CourseStatus::cases(),
         ]);
     }
 

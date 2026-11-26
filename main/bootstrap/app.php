@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\RecordOperation;
 use App\Http\Middleware\EnsureStaffAssigned;
 use App\Http\Middleware\EnsureWebAccount;
 use App\Http\Middleware\LimitApiTraffic;
@@ -21,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['assigned' => EnsureStaffAssigned::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (Throwable $exception): void {
+            if (config('operations.record_application_errors')) {
+                app(RecordOperation::class)->handle('application', 'failed', $exception::class);
+            }
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
